@@ -92,13 +92,6 @@ function renderCurrentQuestion() {
         <img src="${q.problemImage}" alt="${q.number}번 문제" class="problem-image">
       </div>
 
-      <div class="try-box">
-        <strong>수업 전 할 일</strong>
-        <ul>
-          ${q.checklist.map(item => `<li>${item}</li>`).join("")}
-        </ul>
-      </div>
-
       <details class="answer-box">
         <summary>정답 확인</summary>
         <p>정답: ${q.answer}</p>
@@ -119,10 +112,15 @@ function renderCurrentQuestion() {
 
       <details class="review-box">
         <summary>단계별 풀이 보기</summary>
-        ${q.steps.map(step => `
-          <h4>${step.title}</h4>
-          <p>${step.content}</p>
-        `).join("")}
+
+        <div class="steps-wrapper">
+          ${(q.steps || []).map(step => `
+            <div class="step-card">
+              <h4>${step.title}</h4>
+              <p>${step.content}</p>
+            </div>
+          `).join("")}
+        </div>
       </details>
 
       <details class="review-box">
