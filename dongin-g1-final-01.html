@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>동인고1 공통수학1 1회차 | 제이엠수학 복습실</title>
+  <link rel="stylesheet" href="style.css?v=20260701-5">
+</head>
+<body>
+
+  <header class="header">
+    <h1 id="lesson-title">동인고1 공통수학1</h1>
+    <p id="lesson-subtitle">1회차 복습 페이지</p>
+  </header>
+
+  <button id="prev-question" class="side-nav side-nav-left" aria-label="이전">◀</button>
+  <button id="next-question" class="side-nav side-nav-right" aria-label="다음">▶</button>
+
+  <main class="container">
+
+    <div class="page-nav">
+      <a class="back-button" href="dongin-g1-final.html">← 회차 선택으로</a>
+    </div>
+
+    <section id="lesson-video-card" class="card video-card">
+      <span class="badge">수업 영상</span>
+      <h2>수업 전체 영상</h2>
+      <p>
+        영상을 계속 재생하면서 아래 문항을 바꿔가며 복습할 수 있습니다.
+      </p>
+      <div id="lesson-video-area"></div>
+    </section>
+
+    <section class="card">
+      <span class="badge">문항 선택</span>
+      <h2>오늘의 문항</h2>
+      <p>
+        번호를 누르면 원하는 문항으로 바로 이동할 수 있습니다.
+      </p>
+
+      <div id="question-number-nav" class="question-number-nav"></div>
+    </section>
+
+    <section class="card">
+      <div id="current-question-area"></div>
+    </section>
+
+    <footer class="footer">
+      JM MATHEMATICS ACADEMY
+    </footer>
+
+  </main>
+
+  <script src="data.js?v=20260701-5"></script>
+  <script src="script.js?v=20260701-5"></script>
+</body>
+</html>
