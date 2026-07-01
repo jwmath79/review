@@ -50,6 +50,137 @@ body {
   color: #1f1f1f;
 }
 
+/* 수업 전 문제 카드 정리 */
+.pre-question-card {
+  margin-top: 28px;
+  padding: 28px;
+  border-radius: 22px;
+  background: #fffaf5;
+  border: 1px solid #eee2d6;
+}
+
+.pre-question-card h3 {
+  margin: 0 0 8px;
+  font-size: 26px;
+  font-weight: 800;
+  color: #1f1f1f;
+}
+
+.pre-question-card .meta {
+  color: #777;
+  font-size: 15px;
+  margin-bottom: 22px;
+}
+
+/* 문제 이미지 영역 */
+.image-box {
+  margin: 22px 0;
+  padding: 22px;
+  background: #ffffff;
+  border: 1px solid #eee;
+  border-radius: 18px;
+  text-align: center;
+}
+
+.problem-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+/* 수업 전 할 일 */
+.try-box {
+  margin-top: 22px;
+  padding: 20px 22px;
+  border-radius: 18px;
+  background: #ffffff;
+  border-left: 6px solid #ec821e;
+}
+
+.try-box strong {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 18px;
+  color: #1f1f1f;
+}
+
+.try-box ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.try-box li {
+  margin-bottom: 8px;
+}
+
+/* 정답 확인 / 복습 박스 */
+.answer-box,
+.review-box {
+  margin-top: 18px;
+  padding: 0;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #eee;
+  overflow: hidden;
+}
+
+.answer-box summary,
+.review-box summary {
+  cursor: pointer;
+  padding: 16px 20px;
+  font-weight: 800;
+  color: #ec821e;
+  list-style: none;
+}
+
+.answer-box summary::-webkit-details-marker,
+.review-box summary::-webkit-details-marker {
+  display: none;
+}
+
+.answer-box summary::before,
+.review-box summary::before {
+  content: "＋";
+  display: inline-block;
+  margin-right: 8px;
+  font-weight: 900;
+}
+
+.answer-box[open] summary::before,
+.review-box[open] summary::before {
+  content: "－";
+}
+
+.answer-box p,
+.review-box p {
+  margin: 0;
+  padding: 0 20px 18px;
+}
+
+/* 수업 후 문항 카드 */
+.question-card {
+  border: 1px solid #eee2d6;
+  border-radius: 22px;
+  padding: 28px;
+  margin-top: 26px;
+  background: #fffaf5;
+}
+
+.question-card h3 {
+  margin-top: 0;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.question-card h4 {
+  margin: 22px 20px 8px;
+  color: #ec821e;
+  font-size: 18px;
+}
+
+.question-card .review-box p {
+  line-height: 1.7;
+}
 .image-box {
   margin: 20px 0 26px;
   padding: 16px;
