@@ -325,3 +325,85 @@ body {
     padding: 14px;
   }
 }
+/* 문항 번호 버튼 */
+.question-number-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.question-number-button {
+  border: 1px solid #eee2d6;
+  background: #fffaf5;
+  color: #333;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.question-number-button:hover {
+  border-color: #ec821e;
+  color: #ec821e;
+}
+
+.question-number-button.active {
+  background: #ec821e;
+  color: white;
+  border-color: #ec821e;
+}
+
+/* 좌우 고정 이전/다음 버튼 */
+.side-nav {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  border: none;
+  background: #ec821e;
+  color: white;
+  padding: 14px 18px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+
+.side-nav-left {
+  left: 24px;
+}
+
+.side-nav-right {
+  right: 24px;
+}
+
+.side-nav:hover {
+  background: #d96f12;
+}
+
+.side-nav:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+/* 모바일에서는 하단 고정 */
+@media (max-width: 760px) {
+  .side-nav {
+    top: auto;
+    bottom: 18px;
+    transform: none;
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+
+  .side-nav-left {
+    left: 16px;
+  }
+
+  .side-nav-right {
+    right: 16px;
+  }
+}
