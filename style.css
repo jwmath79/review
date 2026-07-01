@@ -549,3 +549,102 @@ body {
     font-size: 15px;
   }
 }
+/* 관리자 페이지 */
+.admin-class-list {
+  margin-top: 24px;
+}
+
+.admin-class-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  padding: 22px 24px;
+  margin-bottom: 16px;
+  border: 1px solid #eee2d6;
+  border-radius: 18px;
+  background: #fffaf5;
+}
+
+.admin-class-card h3 {
+  margin: 0 0 6px;
+  font-size: 21px;
+  font-weight: 900;
+}
+
+.admin-class-card p {
+  margin: 0;
+  color: #777;
+  font-size: 15px;
+}
+
+.admin-class-card.is-waiting {
+  background: #f3f3f3;
+  border-color: #e5e5e5;
+}
+
+.admin-button-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.admin-button {
+  display: inline-block;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: #ec821e;
+  color: white;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.admin-button:hover {
+  background: #d96f12;
+}
+
+.admin-button.disabled {
+  background: #ccc;
+  color: white;
+  cursor: not-allowed;
+}
+
+.link-box {
+  margin: 18px 0;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: #fffaf5;
+  border: 1px solid #eee2d6;
+  font-weight: 800;
+  color: #333;
+  word-break: break-all;
+}
+
+.admin-note {
+  color: #555;
+}
+
+/* 공개 안내 페이지 강조 */
+.guide-emphasis {
+  margin-top: 22px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: #fffaf5;
+  border-left: 6px solid #ec821e;
+  font-weight: 800;
+}
+
+/* 관리자 페이지 모바일 */
+@media (max-width: 760px) {
+  .admin-class-card {
+    display: block;
+  }
+
+  .admin-button-group {
+    justify-content: flex-start;
+    margin-top: 16px;
+  }
+}
