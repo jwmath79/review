@@ -10,16 +10,64 @@ const prevButton = document.getElementById("prev-question");
 const nextButton = document.getElementById("next-question");
 
 let currentIndex = 0;
+const GROUP_SIZE = 10;
+
+function getCurrentGroupStart() {
+  return Math.floor(currentIndex / GROUP_SIZE) * GROUP_SIZE;
+}
+
+function getGroupCount() {
+  return Math.ceil(lesson.questions.length / GROUP_SIZE);
+}
 
 function renderNumberButtons() {
-  numberNav.innerHTML = lesson.questions.map((q, index) => `
-    <button 
-      class="question-number-button ${index === currentIndex ? "active" : ""}" 
-      onclick="goToQuestion(${index})"
-    >
-      ${q.number}번
-    </button>
-  `).join("");
+  const total = lesson.questions.length;
+  const currentGroupStart = getCurrentGroupStart();
+  const currentGroupEnd = Math.min(currentGroupStart + GROUP_SIZE, total);
+
+  const groupButtons = Array.from({ length: getGroupCount() }, (_, groupIndex) => {
+    const start = groupIndex * GROUP_SIZE;
+    const end = Math.min(start + GROUP_SIZE, total);
+    const isActive = currentIndex >= start && currentIndex < end;
+
+    return `
+      <button 
+        class="question-range-button ${isActive ? "active" : ""}" 
+        onclick="goToQuestion(${start})"
+      >
+        ${lesson.questions[start].number}~${lesson.questions[end - 1].number}번
+      </button>
+    `;
+  }).join("");
+
+  const numberButtons = lesson.questions
+    .slice(currentGroupStart, currentGroupEnd)
+    .map((q, offset) => {
+      const index = currentGroupStart + offset;
+
+      return `
+        <button 
+          class="question-number-button ${index === currentIndex ? "active" : ""}" 
+          onclick="goToQuestion(${index})"
+        >
+          ${q.number}번
+        </button>
+      `;
+    }).join("");
+
+  numberNav.innerHTML = `
+    <div class="question-current-status">
+      현재 ${lesson.questions[currentIndex].number}번 / 총 ${total}문항
+    </div>
+
+    <div class="question-range-nav">
+      ${groupButtons}
+    </div>
+
+    <div class="question-number-list">
+      ${numberButtons}
+    </div>
+  `;
 }
 
 function renderCurrentQuestion() {
