@@ -1,6 +1,7 @@
 window.lessonData = {
   title: "동인고1 공통수학1",
   subtitle: "기말 대비 복습 페이지",
+  lessonVideoUrl: "",
   questions: [
     {
       number: 1,
@@ -9,16 +10,8 @@ window.lessonData = {
       difficulty: "중",
       problemImage: "assets/problems/q01.png",
       answer: "⑤ ㄱ, ㄴ, ㄷ",
-      checklist: [
-        "문제를 먼저 직접 풀어봅니다.",
-        "주어진 조건을 표시합니다.",
-        "풀이의 첫 줄을 어디서 시작할지 생각합니다.",
-        "막히는 지점을 체크해둡니다."
-      ],
       handwrittenImage: "",
-      videoUrl: "",
       videoTime: "",
-      variationImage: "",
       steps: [
         {
           title: "1단계. 수업에서 먼저 본 것",
@@ -49,16 +42,8 @@ window.lessonData = {
       difficulty: "중상",
       problemImage: "assets/problems/q02.png",
       answer: "14",
-      checklist: [
-        "∠APB=45°가 원에서 어떤 의미인지 먼저 생각합니다.",
-        "원주각과 중심각의 관계를 확인합니다.",
-        "원의 중심 C가 선분 AB의 수직이등분선 위에 있음을 떠올립니다.",
-        "가능한 중심 C가 여러 개 나올 수 있는지 확인합니다."
-      ],
       handwrittenImage: "",
-      videoUrl: "",
       videoTime: "",
-      variationImage: "",
       steps: [
         {
           title: "1단계. 수업에서 먼저 본 것",
