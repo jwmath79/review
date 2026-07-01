@@ -92,3 +92,40 @@ body {
   font-size: 14px;
   margin-top: 40px;
 }
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 18px;
+  color: #ec821e;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.question-card {
+  border: 1px solid #eee;
+  border-radius: 18px;
+  padding: 22px;
+  margin-bottom: 22px;
+  background: #fffaf5;
+}
+
+.question-card h3 {
+  margin-top: 0;
+  font-size: 22px;
+}
+
+.question-card h4 {
+  margin-bottom: 6px;
+  color: #ec821e;
+}
+
+.meta {
+  color: #777;
+  font-size: 15px;
+  margin-top: -8px;
+  margin-bottom: 18px;
+}
