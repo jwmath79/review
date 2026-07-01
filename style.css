@@ -448,3 +448,34 @@ body {
     right: 16px;
   }
 }
+/* 단계별 풀이 박스 */
+.steps-wrapper {
+  padding: 8px 18px 20px;
+}
+
+.step-card {
+  background: #fffaf5;
+  border: 1px solid #eee2d6;
+  border-left: 5px solid #ec821e;
+  border-radius: 16px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+
+.step-card:last-child {
+  margin-bottom: 0;
+}
+
+.step-card h4 {
+  margin: 0 0 10px;
+  color: #ec821e;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.step-card p {
+  margin: 0;
+  padding: 0;
+  line-height: 1.8;
+  color: #222;
+}
