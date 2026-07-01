@@ -464,3 +464,88 @@ body {
     right: 16px;
   }
 }
+/* 수업 첫 페이지 안내 */
+.class-guide .guide-emphasis {
+  margin-top: 22px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: #fffaf5;
+  border-left: 6px solid #ec821e;
+  font-weight: 700;
+}
+
+/* 회차 선택 그리드 */
+.session-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.session-button {
+  display: block;
+  padding: 22px 20px;
+  border-radius: 18px;
+  background: #fffaf5;
+  border: 1px solid #eee2d6;
+  text-decoration: none;
+  color: #222;
+  transition: 0.15s ease;
+}
+
+.session-button strong {
+  display: block;
+  font-size: 21px;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.session-button span {
+  display: block;
+  font-size: 16px;
+  color: #777;
+  font-weight: 700;
+}
+
+.session-button:hover {
+  border-color: #ec821e;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(236, 130, 30, 0.14);
+}
+
+.session-button.is-disabled {
+  background: #f1f1f1;
+  color: #aaa;
+  border-color: #e5e5e5;
+  cursor: not-allowed;
+}
+
+.session-button.is-disabled span {
+  color: #aaa;
+}
+
+.session-button.is-disabled:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: #e5e5e5;
+}
+
+/* 모바일 회차 선택 */
+@media (max-width: 760px) {
+  .session-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .session-button {
+    padding: 18px 16px;
+  }
+
+  .session-button strong {
+    font-size: 19px;
+  }
+
+  .session-button span {
+    font-size: 15px;
+  }
+}
