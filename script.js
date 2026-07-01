@@ -82,7 +82,6 @@ function renderCurrentQuestion() {
           <h2>${q.number}번. ${q.title}</h2>
           <p class="meta">단원: ${q.unit} · 난이도: ${q.difficulty}</p>
         </div>
-        <span class="question-status">수업 전 공개</span>
       </div>
 
       <div class="section-divider">
