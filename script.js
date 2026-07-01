@@ -4,8 +4,7 @@ document.getElementById("lesson-title").textContent = lesson.title;
 document.getElementById("lesson-subtitle").textContent = lesson.subtitle;
 
 const numberNav = document.getElementById("question-number-nav");
-const preArea = document.getElementById("pre-question-list");
-const reviewArea = document.getElementById("review-question-list");
+const currentArea = document.getElementById("current-question-area");
 
 const prevButton = document.getElementById("prev-question");
 const nextButton = document.getElementById("next-question");
@@ -23,15 +22,23 @@ function renderNumberButtons() {
   `).join("");
 }
 
-function renderPreQuestion(q) {
-  preArea.innerHTML = `
-    <div class="pre-question-card">
+function renderCurrentQuestion() {
+  const q = lesson.questions[currentIndex];
+
+  currentArea.innerHTML = `
+    <div class="single-question-card">
+
       <div class="question-head">
         <div>
-          <h3>${q.number}번. ${q.title}</h3>
+          <span class="badge">선택 문항</span>
+          <h2>${q.number}번. ${q.title}</h2>
           <p class="meta">단원: ${q.unit} · 난이도: ${q.difficulty}</p>
         </div>
         <span class="question-status">수업 전 공개</span>
+      </div>
+
+      <div class="section-divider">
+        <span>수업 전</span>
       </div>
 
       <div class="image-box">
@@ -49,15 +56,10 @@ function renderPreQuestion(q) {
         <summary>정답 확인</summary>
         <p>정답: ${q.answer}</p>
       </details>
-    </div>
-  `;
-}
 
-function renderReviewQuestion(q) {
-  reviewArea.innerHTML = `
-    <div class="question-card">
-      <h3>${q.number}번. ${q.title}</h3>
-      <p class="meta">단원: ${q.unit} · 난이도: ${q.difficulty}</p>
+      <div class="section-divider">
+        <span>수업 후</span>
+      </div>
 
       <details class="review-box">
         <summary>심정우T 손풀이 보기</summary>
@@ -93,27 +95,22 @@ function renderReviewQuestion(q) {
             : `<p>수업 후 같은 풀이 흐름으로 연습할 변형문제를 추가합니다.</p>`
         }
       </details>
+
     </div>
   `;
-}
-
-function updateSideButtons() {
-  prevButton.disabled = currentIndex === 0;
-  nextButton.disabled = currentIndex === lesson.questions.length - 1;
-}
-
-function renderCurrentQuestion() {
-  const q = lesson.questions[currentIndex];
 
   renderNumberButtons();
-  renderPreQuestion(q);
-  renderReviewQuestion(q);
   updateSideButtons();
 
   window.scrollTo({
     top: 0,
     behavior: "smooth"
   });
+}
+
+function updateSideButtons() {
+  prevButton.disabled = currentIndex === 0;
+  nextButton.disabled = currentIndex === lesson.questions.length - 1;
 }
 
 function goToQuestion(index) {
