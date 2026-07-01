@@ -199,21 +199,28 @@ function updateSideButtons() {
 }
 
 function goToQuestion(index) {
+  const currentScrollY = window.scrollY;
+
   currentIndex = index;
   renderCurrentQuestion();
+
+  requestAnimationFrame(() => {
+    window.scrollTo({
+      top: currentScrollY,
+      behavior: "auto"
+    });
+  });
 }
 
 prevButton.addEventListener("click", () => {
   if (currentIndex > 0) {
-    currentIndex--;
-    renderCurrentQuestion();
+    goToQuestion(currentIndex - 1);
   }
 });
 
 nextButton.addEventListener("click", () => {
   if (currentIndex < lesson.questions.length - 1) {
-    currentIndex++;
-    renderCurrentQuestion();
+    goToQuestion(currentIndex + 1);
   }
 });
 
