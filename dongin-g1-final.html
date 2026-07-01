@@ -4,45 +4,62 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>동인고1 공통수학1 | 제이엠수학 복습실</title>
-  <link rel="stylesheet" href="style.css?v=20260701-4">
+  <link rel="stylesheet" href="style.css?v=20260701-5">
 </head>
 <body>
 
   <header class="header">
-    <h1 id="lesson-title">동인고1 공통수학1</h1>
-    <p id="lesson-subtitle">기말 대비 복습 페이지</p>
+    <h1>동인고1 공통수학1</h1>
+    <p>기말 대비 복습 페이지</p>
   </header>
-
-  <button id="prev-question" class="side-nav side-nav-left" aria-label="이전">◀</button>
-  <button id="next-question" class="side-nav side-nav-right" aria-label="다음">▶</button>
 
   <main class="container">
 
-    <div class="page-nav">
-      <a class="back-button" href="index.html">← 복습실 메인으로</a>
-    </div>
+    <section class="card class-guide">
+      <span class="badge">복습 방법</span>
+      <h2>수업 전·후 복습 안내</h2>
 
-    <section id="lesson-video-card" class="card video-card">
-      <span class="badge">수업 영상</span>
-      <h2>수업 전체 영상</h2>
       <p>
-        영상을 계속 재생하면서 아래 문항을 바꿔가며 복습할 수 있습니다.
+        이 페이지는 수업 전 문제 확인과 수업 후 풀이 복습을 위한 페이지입니다.
       </p>
-      <div id="lesson-video-area"></div>
+
+      <ol class="step-list">
+        <li>수업 전에는 오늘 풀 문제를 먼저 확인하고, 가능한 데까지 직접 풀어봅니다.</li>
+        <li>필요할 때만 정답을 확인합니다.</li>
+        <li>수업 후에는 손풀이와 단계별 풀이를 보며 수업에서 다룬 사고 흐름을 다시 복습합니다.</li>
+        <li>수업 영상은 전체 영상으로 제공되며, 영상을 보면서 문항별 자료를 함께 확인할 수 있습니다.</li>
+      </ol>
+
+      <p class="guide-emphasis">
+        정답만 확인하는 복습이 아니라,<br>
+        문제를 처음 봤을 때 무엇을 보고, 어디서 출발해야 하며,
+        막혔을 때 어떤 관점으로 다시 바라봐야 하는지를 확인합니다.
+      </p>
     </section>
 
     <section class="card">
-      <span class="badge">문항 선택</span>
-      <h2>오늘의 문항</h2>
+      <span class="badge">회차 선택</span>
+      <h2>수업 회차</h2>
       <p>
-        번호를 누르면 원하는 문항으로 바로 이동할 수 있습니다.
+        복습할 회차를 선택하세요.
       </p>
 
-      <div id="question-number-nav" class="question-number-nav"></div>
-    </section>
+      <div class="session-grid">
+        <a class="session-button" href="dongin-g1-final-01.html">
+          <strong>1회차</strong>
+          <span>26.07.01</span>
+        </a>
 
-    <section class="card">
-      <div id="current-question-area"></div>
+        <div class="session-button is-disabled">
+          <strong>2회차</strong>
+          <span>준비중</span>
+        </div>
+
+        <div class="session-button is-disabled">
+          <strong>3회차</strong>
+          <span>준비중</span>
+        </div>
+      </div>
     </section>
 
     <footer class="footer">
@@ -51,7 +68,5 @@
 
   </main>
 
-  <script src="data.js?v=20260701-4"></script>
-  <script src="script.js?v=20260701-4"></script>
 </body>
 </html>
