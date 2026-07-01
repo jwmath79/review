@@ -9,8 +9,62 @@ const currentArea = document.getElementById("current-question-area");
 const prevButton = document.getElementById("prev-question");
 const nextButton = document.getElementById("next-question");
 
+const videoCard = document.getElementById("lesson-video-card");
+const videoArea = document.getElementById("lesson-video-area");
+
 let currentIndex = 0;
 const GROUP_SIZE = 10;
+
+function getYouTubeEmbedUrl(url) {
+  if (!url) return "";
+
+  try {
+    const parsedUrl = new URL(url);
+
+    if (parsedUrl.hostname.includes("youtu.be")) {
+      const videoId = parsedUrl.pathname.replace("/", "");
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+
+    if (parsedUrl.hostname.includes("youtube.com")) {
+      if (parsedUrl.pathname.includes("/embed/")) {
+        return url;
+      }
+
+      const videoId = parsedUrl.searchParams.get("v");
+      if (videoId) {
+        return `https://www.youtube.com/embed/${videoId}`;
+      }
+    }
+
+    return url;
+  } catch (error) {
+    return "";
+  }
+}
+
+function renderLessonVideo() {
+  const embedUrl = getYouTubeEmbedUrl(lesson.lessonVideoUrl);
+
+  if (!embedUrl) {
+    videoCard.style.display = "none";
+    return;
+  }
+
+  videoCard.style.display = "block";
+
+  videoArea.innerHTML = `
+    <div class="video-wrapper">
+      <iframe
+        src="${embedUrl}"
+        title="수업 전체 영상"
+        frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowfullscreen>
+      </iframe>
+    </div>
+  `;
+}
 
 function getCurrentGroupStart() {
   return Math.floor(currentIndex / GROUP_SIZE) * GROUP_SIZE;
@@ -126,18 +180,9 @@ function renderCurrentQuestion() {
       <details class="review-box">
         <summary>수업 영상 보기</summary>
         ${
-          q.videoUrl
-            ? `<p><a href="${q.videoUrl}" target="_blank">${q.videoTime ? q.videoTime + "부터 보기" : "영상 보기"}</a></p>`
-            : `<p>수업 후 영상 링크와 문항별 시작 시간을 이곳에 추가합니다.</p>`
-        }
-      </details>
-
-      <details class="review-box">
-        <summary>변형문제 보기</summary>
-        ${
-          q.variationImage
-            ? `<div class="image-box"><img src="${q.variationImage}" alt="${q.number}번 변형문제" class="problem-image"></div>`
-            : `<p>수업 후 같은 풀이 흐름으로 연습할 변형문제를 추가합니다.</p>`
+          q.videoTime
+            ? `<p>이 문항은 전체 영상의 <strong>${q.videoTime}</strong> 지점부터 복습하면 좋습니다.</p>`
+            : `<p>위의 수업 전체 영상을 계속 재생하면서 이 문항의 풀이 흐름을 함께 확인합니다.</p>`
         }
       </details>
 
@@ -146,11 +191,6 @@ function renderCurrentQuestion() {
 
   renderNumberButtons();
   updateSideButtons();
-
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth"
-  });
 }
 
 function updateSideButtons() {
@@ -177,4 +217,5 @@ nextButton.addEventListener("click", () => {
   }
 });
 
+renderLessonVideo();
 renderCurrentQuestion();
