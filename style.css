@@ -50,6 +50,20 @@ body {
   color: #1f1f1f;
 }
 
+.image-box {
+  margin: 20px 0 26px;
+  padding: 16px;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 14px;
+  text-align: center;
+}
+
+.problem-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+}
 .lesson-list {
   list-style: none;
   padding: 0;
