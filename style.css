@@ -191,20 +191,23 @@ body {
   margin: 0 0 18px;
 }
 
-/* 수업 전 / 수업 후 구분선 */
+/* 수업 전 / 수업 후 구분 */
 .section-divider {
-  margin: 32px 0 18px;
-  border-top: 1px solid #eee2d6;
+  margin: 34px 0 18px;
+  border-top: 2px solid #f0dfcf;
   position: relative;
 }
 
 .section-divider span {
   position: relative;
-  top: -13px;
-  background: white;
-  color: #ec821e;
+  top: -15px;
+  display: inline-block;
+  background: #ec821e;
+  color: white;
+  font-size: 14px;
   font-weight: 900;
-  padding-right: 12px;
+  padding: 6px 13px;
+  border-radius: 999px;
 }
 
 /* 문제 이미지 */
@@ -308,20 +311,21 @@ body {
   border: none;
   background: #ec821e;
   color: white;
-  padding: 14px 18px;
-  border-radius: 999px;
-  font-size: 15px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  font-size: 13px;
   font-weight: 900;
   cursor: pointer;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
 }
 
 .side-nav-left {
-  left: 24px;
+  left: max(24px, calc(50% - 560px));
 }
 
 .side-nav-right {
-  right: 24px;
+  right: max(24px, calc(50% - 560px));
 }
 
 .side-nav:hover {
@@ -329,7 +333,7 @@ body {
 }
 
 .side-nav:disabled {
-  opacity: 0.25;
+  opacity: 0.12;
   cursor: not-allowed;
 }
 
@@ -389,8 +393,9 @@ body {
     top: auto;
     bottom: 18px;
     transform: none;
-    padding: 12px 16px;
-    font-size: 14px;
+    width: 54px;
+    height: 54px;
+    font-size: 13px;
   }
 
   .side-nav-left {
