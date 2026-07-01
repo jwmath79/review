@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>제이엠수학 복습실</title>
+  <link rel="stylesheet" href="style.css?v=20260701-9">
+</head>
+<body>
+
+  <header class="header">
+    <h1 id="lesson-title">제이엠수학 복습실</h1>
+    <p id="lesson-subtitle">회차 복습 페이지</p>
+  </header>
+
+  <button id="prev-question" class="side-nav side-nav-left" aria-label="이전">◀</button>
+  <button id="next-question" class="side-nav side-nav-right" aria-label="다음">▶</button>
+
+  <main class="container">
+
+    <div class="page-nav">
+      <a id="back-to-class" class="back-button" href="class.html">← 회차 선택으로</a>
+    </div>
+
+    <section id="lesson-video-card" class="card video-card">
+      <span class="badge">수업 영상</span>
+      <h2>수업 전체 영상</h2>
+      <p>
+        영상을 계속 재생하면서 아래 문항을 바꿔가며 복습할 수 있습니다.
+      </p>
+      <div id="lesson-video-area"></div>
+    </section>
+
+    <section class="card">
+      <span class="badge">문항 선택</span>
+      <h2>오늘의 문항</h2>
+      <p>
+        번호를 누르면 원하는 문항으로 바로 이동할 수 있습니다.
+      </p>
+
+      <div id="question-number-nav" class="question-number-nav">
+        <div class="question-current-status">문항을 불러오는 중입니다.</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div id="current-question-area">
+        <div class="single-question-card">
+          <span class="badge">불러오는 중</span>
+          <h2>잠시만 기다려주세요.</h2>
+          <p class="meta">구글시트에서 복습 데이터를 불러오고 있습니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      JM MATHEMATICS ACADEMY
+    </footer>
+
+  </main>
+
+  <script src="config.js?v=20260701-9"></script>
+  <script src="session-script.js?v=20260701-9"></script>
+</body>
+</html>
