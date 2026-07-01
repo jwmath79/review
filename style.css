@@ -406,3 +406,68 @@ body {
     right: 16px;
   }
 }
+/* 문항 선택 영역 정리 */
+.question-current-status {
+  margin-top: 16px;
+  margin-bottom: 14px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #555;
+}
+
+.question-range-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.question-range-button {
+  border: 1px solid #eee2d6;
+  background: white;
+  color: #555;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.question-range-button:hover {
+  border-color: #ec821e;
+  color: #ec821e;
+}
+
+.question-range-button.active {
+  background: #222;
+  color: white;
+  border-color: #222;
+}
+
+.question-number-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.question-number-button {
+  border: 1px solid #eee2d6;
+  background: #fffaf5;
+  color: #333;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.question-number-button:hover {
+  border-color: #ec821e;
+  color: #ec821e;
+}
+
+.question-number-button.active {
+  background: #ec821e;
+  color: white;
+  border-color: #ec821e;
+}
