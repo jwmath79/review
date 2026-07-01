@@ -3,11 +3,28 @@ const lesson = window.lessonData;
 document.getElementById("lesson-title").textContent = lesson.title;
 document.getElementById("lesson-subtitle").textContent = lesson.subtitle;
 
+const numberNav = document.getElementById("question-number-nav");
 const preArea = document.getElementById("pre-question-list");
 const reviewArea = document.getElementById("review-question-list");
 
-function renderPreQuestions() {
-  preArea.innerHTML = lesson.questions.map(q => `
+const prevButton = document.getElementById("prev-question");
+const nextButton = document.getElementById("next-question");
+
+let currentIndex = 0;
+
+function renderNumberButtons() {
+  numberNav.innerHTML = lesson.questions.map((q, index) => `
+    <button 
+      class="question-number-button ${index === currentIndex ? "active" : ""}" 
+      onclick="goToQuestion(${index})"
+    >
+      ${q.number}번
+    </button>
+  `).join("");
+}
+
+function renderPreQuestion(q) {
+  preArea.innerHTML = `
     <div class="pre-question-card">
       <div class="question-head">
         <div>
@@ -33,11 +50,11 @@ function renderPreQuestions() {
         <p>정답: ${q.answer}</p>
       </details>
     </div>
-  `).join("");
+  `;
 }
 
-function renderReviewQuestions() {
-  reviewArea.innerHTML = lesson.questions.map(q => `
+function renderReviewQuestion(q) {
+  reviewArea.innerHTML = `
     <div class="question-card">
       <h3>${q.number}번. ${q.title}</h3>
       <p class="meta">단원: ${q.unit} · 난이도: ${q.difficulty}</p>
@@ -77,8 +94,45 @@ function renderReviewQuestions() {
         }
       </details>
     </div>
-  `).join("");
+  `;
 }
 
-renderPreQuestions();
-renderReviewQuestions();
+function updateSideButtons() {
+  prevButton.disabled = currentIndex === 0;
+  nextButton.disabled = currentIndex === lesson.questions.length - 1;
+}
+
+function renderCurrentQuestion() {
+  const q = lesson.questions[currentIndex];
+
+  renderNumberButtons();
+  renderPreQuestion(q);
+  renderReviewQuestion(q);
+  updateSideButtons();
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
+  });
+}
+
+function goToQuestion(index) {
+  currentIndex = index;
+  renderCurrentQuestion();
+}
+
+prevButton.addEventListener("click", () => {
+  if (currentIndex > 0) {
+    currentIndex--;
+    renderCurrentQuestion();
+  }
+});
+
+nextButton.addEventListener("click", () => {
+  if (currentIndex < lesson.questions.length - 1) {
+    currentIndex++;
+    renderCurrentQuestion();
+  }
+});
+
+renderCurrentQuestion();
