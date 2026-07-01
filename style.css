@@ -124,29 +124,55 @@ body {
   border-color: #ec821e;
 }
 
-/* 수업 전 문항 카드 */
-.pre-question-card {
-  margin-top: 28px;
-  padding: 28px;
-  border-radius: 22px;
-  background: #fffaf5;
-  border: 1px solid #eee2d6;
+/* 문항 선택 버튼 */
+.question-number-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
 }
 
+.question-number-button {
+  border: 1px solid #eee2d6;
+  background: #fffaf5;
+  color: #333;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.question-number-button:hover {
+  border-color: #ec821e;
+  color: #ec821e;
+}
+
+.question-number-button.active {
+  background: #ec821e;
+  color: white;
+  border-color: #ec821e;
+}
+
+/* 한 문항만 보여주는 카드 */
+.single-question-card {
+  padding: 4px;
+}
+
+.single-question-card h2 {
+  margin: 10px 0 8px;
+  font-size: 30px;
+  font-weight: 900;
+  color: #1f1f1f;
+}
+
+/* 문항 상단 */
 .question-head {
   display: flex;
   justify-content: space-between;
   gap: 16px;
   align-items: flex-start;
   margin-bottom: 18px;
-}
-
-.question-head h3,
-.pre-question-card h3 {
-  margin: 0 0 8px;
-  font-size: 26px;
-  font-weight: 800;
-  color: #1f1f1f;
 }
 
 .question-status {
@@ -163,6 +189,22 @@ body {
   color: #777;
   font-size: 15px;
   margin: 0 0 18px;
+}
+
+/* 수업 전 / 수업 후 구분선 */
+.section-divider {
+  margin: 32px 0 18px;
+  border-top: 1px solid #eee2d6;
+  position: relative;
+}
+
+.section-divider span {
+  position: relative;
+  top: -13px;
+  background: white;
+  color: #ec821e;
+  font-weight: 900;
+  padding-right: 12px;
 }
 
 /* 문제 이미지 */
@@ -206,7 +248,7 @@ body {
   margin-bottom: 8px;
 }
 
-/* 정답 확인 / 복습 접기 박스 */
+/* 정답 확인 / 수업 후 복습 접기 박스 */
 .answer-box,
 .review-box {
   margin-top: 18px;
@@ -251,108 +293,10 @@ body {
   line-height: 1.7;
 }
 
-/* 수업 후 문항 카드 */
-.question-card {
-  border: 1px solid #eee2d6;
-  border-radius: 22px;
-  padding: 28px;
-  margin-top: 26px;
-  background: #fffaf5;
-}
-
-.question-card h3 {
-  margin: 0 0 8px;
-  font-size: 26px;
-  font-weight: 800;
-}
-
-.question-card h4 {
+.review-box h4 {
   margin: 22px 20px 8px;
   color: #ec821e;
   font-size: 18px;
-}
-
-.question-card .review-box p {
-  line-height: 1.7;
-}
-
-/* 하단 */
-.footer {
-  text-align: center;
-  color: #777;
-  font-size: 14px;
-  margin-top: 40px;
-}
-
-/* 모바일 대응 */
-@media (max-width: 640px) {
-  .header {
-    padding: 36px 20px;
-  }
-
-  .header h1 {
-    font-size: 32px;
-  }
-
-  .container {
-    padding: 28px 16px;
-  }
-
-  .card {
-    padding: 24px;
-    border-radius: 20px;
-  }
-
-  .card h2 {
-    font-size: 26px;
-  }
-
-  .question-head {
-    display: block;
-  }
-
-  .question-status {
-    display: inline-block;
-    margin-top: 8px;
-  }
-
-  .pre-question-card,
-  .question-card {
-    padding: 22px;
-  }
-
-  .image-box {
-    padding: 14px;
-  }
-}
-/* 문항 번호 버튼 */
-.question-number-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 18px;
-}
-
-.question-number-button {
-  border: 1px solid #eee2d6;
-  background: #fffaf5;
-  color: #333;
-  padding: 10px 16px;
-  border-radius: 999px;
-  font-size: 15px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.question-number-button:hover {
-  border-color: #ec821e;
-  color: #ec821e;
-}
-
-.question-number-button.active {
-  background: #ec821e;
-  color: white;
-  border-color: #ec821e;
 }
 
 /* 좌우 고정 이전/다음 버튼 */
@@ -389,8 +333,58 @@ body {
   cursor: not-allowed;
 }
 
-/* 모바일에서는 하단 고정 */
+/* 하단 */
+.footer {
+  text-align: center;
+  color: #777;
+  font-size: 14px;
+  margin-top: 40px;
+}
+
+/* 모바일 대응 */
 @media (max-width: 760px) {
+  .header {
+    padding: 36px 20px;
+  }
+
+  .header h1 {
+    font-size: 32px;
+  }
+
+  .header p {
+    font-size: 16px;
+  }
+
+  .container {
+    padding: 28px 16px 90px;
+  }
+
+  .card {
+    padding: 24px;
+    border-radius: 20px;
+  }
+
+  .card h2 {
+    font-size: 26px;
+  }
+
+  .question-head {
+    display: block;
+  }
+
+  .question-status {
+    display: inline-block;
+    margin-top: 8px;
+  }
+
+  .single-question-card h2 {
+    font-size: 26px;
+  }
+
+  .image-box {
+    padding: 14px;
+  }
+
   .side-nav {
     top: auto;
     bottom: 18px;
