@@ -129,3 +129,27 @@ body {
   margin-top: -8px;
   margin-bottom: 18px;
 }
+
+.page-nav {
+  max-width: 960px;
+  margin: 0 auto 18px;
+  padding: 0 20px;
+}
+
+.back-button {
+  display: inline-block;
+  background: white;
+  color: #555;
+  border: 1px solid #e6e0da;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.back-button:hover {
+  color: #ec821e;
+  border-color: #ec821e;
+}
