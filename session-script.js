@@ -18,6 +18,7 @@ let lesson = null;
 let currentIndex = 0;
 let renderedLessonVideoUrl = "";
 const GROUP_SIZE = 10;
+const PENDING_VIDEO_KEY = "__pending_lesson_video__";
 
 backToClass.href = `class.html?classId=${encodeURIComponent(classId)}`;
 
@@ -106,14 +107,21 @@ function renderLessonVideo() {
     getYouTubeEmbedUrl(lesson?.videoUrl) ||
     getYouTubeEmbedUrl(lesson?.lessonVideoUrl);
 
+  videoCard.style.display = "block";
+
   if (!embedUrl) {
-    videoCard.style.display = "none";
-    videoArea.innerHTML = "";
-    renderedLessonVideoUrl = "";
+    if (renderedLessonVideoUrl === PENDING_VIDEO_KEY) {
+      return;
+    }
+
+    renderedLessonVideoUrl = PENDING_VIDEO_KEY;
+    videoArea.innerHTML = `
+      <div class="image-box">
+        수업 영상 준비중입니다.
+      </div>
+    `;
     return;
   }
-
-  videoCard.style.display = "block";
 
   if (renderedLessonVideoUrl === embedUrl) {
     return;
@@ -218,7 +226,6 @@ function renderCurrentQuestion() {
   }
 
   const q = lesson.questions[currentIndex];
-  const afterClassArea = renderAfterClassArea(q);
 
   currentArea.innerHTML = `
     <div class="single-question-card">
@@ -235,42 +242,24 @@ function renderCurrentQuestion() {
         <span>수업 전</span>
       </div>
 
-      ${
-        hasContent(q.problemImage)
-          ? `
-            <div class="image-box">
-              <img src="${escapeHtml(q.problemImage)}" alt="${escapeHtml(q.number)}번 문제" class="problem-image">
-            </div>
-          `
-          : `
-            <div class="image-box">
-              문제 이미지가 아직 등록되지 않았습니다.
-            </div>
-          `
-      }
+      <div class="image-box">
+        ${
+          hasContent(q.problemImage)
+            ? `<img src="${escapeHtml(q.problemImage)}" alt="${escapeHtml(q.number)}번 문제" class="problem-image">`
+            : "문제 이미지 준비중입니다."
+        }
+      </div>
 
-      ${
-        hasContent(q.answer)
-          ? `
-            <details class="answer-box">
-              <summary>정답 확인</summary>
-              <p>정답: ${escapeHtml(q.answer)}</p>
-            </details>
-          `
-          : ""
-      }
+      <details class="answer-box">
+        <summary>정답 확인</summary>
+        <p>${hasContent(q.answer) ? `정답: ${escapeHtml(q.answer)}` : "정답 준비중입니다."}</p>
+      </details>
 
-      ${
-        afterClassArea
-          ? `
-            <div class="section-divider">
-              <span>수업 후</span>
-            </div>
+      <div class="section-divider">
+        <span>수업 후</span>
+      </div>
 
-            ${afterClassArea}
-          `
-          : ""
-      }
+      ${renderAfterClassArea(q)}
 
     </div>
   `;
@@ -280,38 +269,41 @@ function renderCurrentQuestion() {
 }
 
 function renderAfterClassArea(q) {
-  const blocks = [];
   const steps = Array.isArray(q.steps) ? q.steps : [];
 
-  if (hasContent(q.handwrittenImage)) {
-    blocks.push(`
-      <details class="review-box">
-        <summary>심정우T 손풀이 보기</summary>
-        <div class="image-box">
-          <img src="${escapeHtml(q.handwrittenImage)}" alt="${escapeHtml(q.number)}번 손풀이" class="problem-image">
-        </div>
-      </details>
-    `);
-  }
-
-  if (steps.length > 0) {
-    blocks.push(`
-      <details class="review-box">
-        <summary>단계별 풀이 보기</summary>
-
-        <div class="steps-wrapper">
-          ${steps.map(step => `
-            <div class="step-card">
-              <h4>${escapeHtml(step.title)}</h4>
-              <p>${escapeHtml(step.content)}</p>
+  return `
+    <details class="review-box">
+      <summary>심정우T 손풀이 보기</summary>
+      ${
+        hasContent(q.handwrittenImage)
+          ? `
+            <div class="image-box">
+              <img src="${escapeHtml(q.handwrittenImage)}" alt="${escapeHtml(q.number)}번 손풀이" class="problem-image">
             </div>
-          `).join("")}
-        </div>
-      </details>
-    `);
-  }
+          `
+          : `<p>손풀이 준비중입니다.</p>`
+      }
+    </details>
 
-  return blocks.join("");
+    <details class="review-box">
+      <summary>단계별 풀이 보기</summary>
+
+      ${
+        steps.length > 0
+          ? `
+            <div class="steps-wrapper">
+              ${steps.map(step => `
+                <div class="step-card">
+                  <h4>${escapeHtml(step.title)}</h4>
+                  <p>${escapeHtml(step.content)}</p>
+                </div>
+              `).join("")}
+            </div>
+          `
+          : `<p>단계별 풀이 준비중입니다.</p>`
+      }
+    </details>
+  `;
 }
 
 function updateSideButtons() {
