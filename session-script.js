@@ -16,6 +16,7 @@ const backToClass = document.getElementById("back-to-class");
 
 let lesson = null;
 let currentIndex = 0;
+let renderedLessonVideoUrl = "";
 const GROUP_SIZE = 10;
 
 backToClass.href = `class.html?classId=${encodeURIComponent(classId)}`;
@@ -27,6 +28,10 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function hasContent(value) {
+  return value !== undefined && value !== null && String(value).trim() !== "";
 }
 
 function callApi(query) {
@@ -67,10 +72,12 @@ function callApi(query) {
 }
 
 function getYouTubeEmbedUrl(url) {
-  if (!url) return "";
+  if (!hasContent(url)) return "";
+
+  const rawUrl = String(url).trim();
 
   try {
-    const parsedUrl = new URL(url);
+    const parsedUrl = new URL(rawUrl);
 
     if (parsedUrl.hostname.includes("youtu.be")) {
       const videoId = parsedUrl.pathname.replace("/", "");
@@ -79,7 +86,7 @@ function getYouTubeEmbedUrl(url) {
 
     if (parsedUrl.hostname.includes("youtube.com")) {
       if (parsedUrl.pathname.includes("/embed/")) {
-        return url;
+        return rawUrl;
       }
 
       const videoId = parsedUrl.searchParams.get("v");
@@ -88,21 +95,31 @@ function getYouTubeEmbedUrl(url) {
       }
     }
 
-    return url;
+    return rawUrl;
   } catch (error) {
     return "";
   }
 }
 
 function renderLessonVideo() {
-  const embedUrl = getYouTubeEmbedUrl(lesson.lessonVideoUrl);
+  const embedUrl =
+    getYouTubeEmbedUrl(lesson?.videoUrl) ||
+    getYouTubeEmbedUrl(lesson?.lessonVideoUrl);
 
   if (!embedUrl) {
     videoCard.style.display = "none";
+    videoArea.innerHTML = "";
+    renderedLessonVideoUrl = "";
     return;
   }
 
   videoCard.style.display = "block";
+
+  if (renderedLessonVideoUrl === embedUrl) {
+    return;
+  }
+
+  renderedLessonVideoUrl = embedUrl;
 
   videoArea.innerHTML = `
     <div class="video-wrapper">
@@ -201,8 +218,7 @@ function renderCurrentQuestion() {
   }
 
   const q = lesson.questions[currentIndex];
-  const sessionStatus = lesson.sessionInfo?.status || "after";
-  const isAfterOpen = sessionStatus === "after";
+  const afterClassArea = renderAfterClassArea(q);
 
   currentArea.innerHTML = `
     <div class="single-question-card">
@@ -220,7 +236,7 @@ function renderCurrentQuestion() {
       </div>
 
       ${
-        q.problemImage
+        hasContent(q.problemImage)
           ? `
             <div class="image-box">
               <img src="${escapeHtml(q.problemImage)}" alt="${escapeHtml(q.number)}번 문제" class="problem-image">
@@ -233,23 +249,27 @@ function renderCurrentQuestion() {
           `
       }
 
-      <details class="answer-box">
-        <summary>정답 확인</summary>
-        <p>정답: ${escapeHtml(q.answer)}</p>
-      </details>
-
-      <div class="section-divider">
-        <span>수업 후</span>
-      </div>
+      ${
+        hasContent(q.answer)
+          ? `
+            <details class="answer-box">
+              <summary>정답 확인</summary>
+              <p>정답: ${escapeHtml(q.answer)}</p>
+            </details>
+          `
+          : ""
+      }
 
       ${
-        isAfterOpen
-          ? renderAfterClassArea(q)
-          : `
-            <div class="review-box">
-              <p>수업 후 복습 자료는 수업이 끝난 뒤 공개됩니다.</p>
+        afterClassArea
+          ? `
+            <div class="section-divider">
+              <span>수업 후</span>
             </div>
+
+            ${afterClassArea}
           `
+          : ""
       }
 
     </div>
@@ -260,38 +280,38 @@ function renderCurrentQuestion() {
 }
 
 function renderAfterClassArea(q) {
-  return `
-    <details class="review-box">
-      <summary>심정우T 손풀이 보기</summary>
-      ${
-        q.handwrittenImage
-          ? `<div class="image-box"><img src="${escapeHtml(q.handwrittenImage)}" alt="${escapeHtml(q.number)}번 손풀이" class="problem-image"></div>`
-          : `<p>수업 후 이곳에 손풀이 이미지를 추가합니다.</p>`
-      }
-    </details>
+  const blocks = [];
+  const steps = Array.isArray(q.steps) ? q.steps : [];
 
-    <details class="review-box">
-      <summary>단계별 풀이 보기</summary>
+  if (hasContent(q.handwrittenImage)) {
+    blocks.push(`
+      <details class="review-box">
+        <summary>심정우T 손풀이 보기</summary>
+        <div class="image-box">
+          <img src="${escapeHtml(q.handwrittenImage)}" alt="${escapeHtml(q.number)}번 손풀이" class="problem-image">
+        </div>
+      </details>
+    `);
+  }
 
-      <div class="steps-wrapper">
-        ${(q.steps || []).map(step => `
-          <div class="step-card">
-            <h4>${escapeHtml(step.title)}</h4>
-            <p>${escapeHtml(step.content)}</p>
-          </div>
-        `).join("")}
-      </div>
-    </details>
+  if (steps.length > 0) {
+    blocks.push(`
+      <details class="review-box">
+        <summary>단계별 풀이 보기</summary>
 
-    <details class="review-box">
-      <summary>수업 영상 보기</summary>
-      ${
-        q.videoTime
-          ? `<p>이 문항은 전체 영상의 <strong>${escapeHtml(q.videoTime)}</strong> 지점부터 복습하면 좋습니다.</p>`
-          : `<p>위의 수업 전체 영상을 계속 재생하면서 이 문항의 풀이 흐름을 함께 확인합니다.</p>`
-      }
-    </details>
-  `;
+        <div class="steps-wrapper">
+          ${steps.map(step => `
+            <div class="step-card">
+              <h4>${escapeHtml(step.title)}</h4>
+              <p>${escapeHtml(step.content)}</p>
+            </div>
+          `).join("")}
+        </div>
+      </details>
+    `);
+  }
+
+  return blocks.join("");
 }
 
 function updateSideButtons() {
