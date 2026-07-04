@@ -1,5 +1,6 @@
 const CLASS_STORAGE_KEY = "jmAdminClasses.v1";
 const STUDENT_STORAGE_KEY = "jmAdminStudents.v1";
+const ENROLLMENT_STORAGE_KEY = "jmAdminEnrollments.v1";
 
 const CLASS_STATUS_LABELS = {
   active: "운영중",
@@ -13,6 +14,12 @@ const STUDENT_STATUS_LABELS = {
   paused: "일시중지",
   ended: "수강종료",
   hidden: "숨김"
+};
+
+const ENROLLMENT_STATUS_LABELS = {
+  active: "수강중",
+  paused: "일시중지",
+  ended: "수강종료"
 };
 
 const starterClasses = [
@@ -34,10 +41,13 @@ const starterClasses = [
 const state = {
   classes: [],
   students: [],
+  enrollments: [],
   selectedClassId: null,
   selectedStudentId: null,
   editingClassId: null,
-  editingStudentId: null
+  editingStudentId: null,
+  enrollmentPickerClassId: null,
+  enrollmentNotice: ""
 };
 
 const elements = {
@@ -104,12 +114,33 @@ function loadStudents() {
   }
 }
 
+function loadEnrollments() {
+  const saved = localStorage.getItem(ENROLLMENT_STORAGE_KEY);
+
+  if (!saved) {
+    localStorage.setItem(ENROLLMENT_STORAGE_KEY, JSON.stringify([]));
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    localStorage.setItem(ENROLLMENT_STORAGE_KEY, JSON.stringify([]));
+    return [];
+  }
+}
+
 function saveClasses() {
   localStorage.setItem(CLASS_STORAGE_KEY, JSON.stringify(state.classes));
 }
 
 function saveStudents() {
   localStorage.setItem(STUDENT_STORAGE_KEY, JSON.stringify(state.students));
+}
+
+function saveEnrollments() {
+  localStorage.setItem(ENROLLMENT_STORAGE_KEY, JSON.stringify(state.enrollments));
 }
 
 function formatDate(value) {
@@ -185,6 +216,18 @@ function createStudentId(phone) {
   return candidate;
 }
 
+function createEnrollmentId(classId, studentId) {
+  let candidate = `enrollment-${classId}-${studentId}-${Date.now()}`;
+  let index = 2;
+
+  while (state.enrollments.some((enrollment) => enrollment.enrollmentId === candidate)) {
+    candidate = `enrollment-${classId}-${studentId}-${Date.now()}-${index}`;
+    index += 1;
+  }
+
+  return candidate;
+}
+
 function getStatusClass(status) {
   return `status-badge status-${status}`;
 }
@@ -197,6 +240,88 @@ function isDuplicateStudentPhone(phone, currentStudentId = null) {
   return state.students.some((student) => {
     return student.phone === phone && student.studentId !== currentStudentId;
   });
+}
+
+function getStudentById(studentId) {
+  return state.students.find((student) => student.studentId === studentId);
+}
+
+function getClassById(classId) {
+  return state.classes.find((classItem) => classItem.classId === classId);
+}
+
+function getClassEnrollmentStats(classId) {
+  return state.enrollments
+    .filter((enrollment) => enrollment.classId === classId)
+    .reduce(
+      (stats, enrollment) => {
+        if (enrollment.status === "active") {
+          stats.active += 1;
+        }
+
+        if (enrollment.status === "paused") {
+          stats.paused += 1;
+        }
+
+        if (enrollment.status === "ended") {
+          stats.ended += 1;
+        }
+
+        return stats;
+      },
+      { active: 0, paused: 0, ended: 0 }
+    );
+}
+
+function getClassEnrollments(classId) {
+  const statusOrder = {
+    active: 1,
+    paused: 2,
+    ended: 3
+  };
+
+  return state.enrollments
+    .filter((enrollment) => enrollment.classId === classId)
+    .sort((a, b) => {
+      const statusDiff = statusOrder[a.status] - statusOrder[b.status];
+      if (statusDiff !== 0) {
+        return statusDiff;
+      }
+
+      return new Date(b.updatedAt) - new Date(a.updatedAt);
+    });
+}
+
+function getStudentEnrollments(studentId) {
+  return state.enrollments
+    .filter((enrollment) => enrollment.studentId === studentId)
+    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+}
+
+function getActiveOrPausedEnrollment(classId, studentId) {
+  return state.enrollments.find((enrollment) => {
+    return (
+      enrollment.classId === classId &&
+      enrollment.studentId === studentId &&
+      ["active", "paused"].includes(enrollment.status)
+    );
+  });
+}
+
+function getEndedEnrollment(classId, studentId) {
+  return state.enrollments
+    .filter((enrollment) => {
+      return (
+        enrollment.classId === classId &&
+        enrollment.studentId === studentId &&
+        enrollment.status === "ended"
+      );
+    })
+    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0];
+}
+
+function getVisibleStudents() {
+  return state.students.filter((student) => student.status !== "hidden");
 }
 
 function switchView(viewName) {
@@ -255,21 +380,28 @@ function renderClassList() {
   }
 
   elements.classList.innerHTML = state.classes
-    .map((classItem) => `
-      <button class="class-card ${classItem.classId === state.selectedClassId ? "is-selected" : ""}" type="button" data-class-id="${classItem.classId}">
-        <h4>${escapeHtml(classItem.classTitle)}</h4>
-        <p>${escapeHtml(classItem.targetSchool)} ${escapeHtml(classItem.targetGrade)} - ${escapeHtml(classItem.subject)}</p>
-        <div class="card-footer">
-          <span class="${getStatusClass(classItem.status)}">${CLASS_STATUS_LABELS[classItem.status]}</span>
-          <span class="class-meta">수업 코드 ${escapeHtml(classItem.accessCode)}</span>
-        </div>
-      </button>
-    `)
+    .map((classItem) => {
+      const enrollmentStats = getClassEnrollmentStats(classItem.classId);
+
+      return `
+        <button class="class-card ${classItem.classId === state.selectedClassId ? "is-selected" : ""}" type="button" data-class-id="${classItem.classId}">
+          <h4>${escapeHtml(classItem.classTitle)}</h4>
+          <p>${escapeHtml(classItem.targetSchool)} ${escapeHtml(classItem.targetGrade)} - ${escapeHtml(classItem.subject)}</p>
+          <p class="class-meta">수강중 ${enrollmentStats.active}명 / 일시중지 ${enrollmentStats.paused}명</p>
+          <div class="card-footer">
+            <span class="${getStatusClass(classItem.status)}">${CLASS_STATUS_LABELS[classItem.status]}</span>
+            <span class="class-meta">수업 코드 ${escapeHtml(classItem.accessCode)}</span>
+          </div>
+        </button>
+      `;
+    })
     .join("");
 
   document.querySelectorAll(".class-card").forEach((card) => {
     card.addEventListener("click", () => {
       state.selectedClassId = card.dataset.classId;
+      state.enrollmentPickerClassId = null;
+      state.enrollmentNotice = "";
       hideClassForm();
       render();
     });
@@ -285,6 +417,9 @@ function renderClassDetail() {
     elements.classDetail.innerHTML = '<div class="empty-state">수업을 선택하면 상세 정보가 표시됩니다.</div>';
     return;
   }
+
+  const enrollmentStats = getClassEnrollmentStats(classItem.classId);
+  const showPicker = state.enrollmentPickerClassId === classItem.classId;
 
   elements.classDetail.innerHTML = `
     <div class="detail-content">
@@ -323,19 +458,161 @@ function renderClassDetail() {
         ${escapeHtml(classItem.description || "수업 설명이 없습니다.")}
       </div>
 
+      <div class="enrollment-summary">
+        <strong>수업별 등록 학생</strong>
+        <span>수강중 ${enrollmentStats.active}명 / 일시중지 ${enrollmentStats.paused}명 / 수강종료 ${enrollmentStats.ended}명</span>
+      </div>
+
+      <div class="detail-actions">
+        <button id="add-student-to-class" class="secondary-button" type="button">학생 추가</button>
+        <button id="edit-selected-class" class="secondary-button" type="button">수업 수정</button>
+      </div>
+
+      ${state.enrollmentNotice ? `<div class="form-info">${escapeHtml(state.enrollmentNotice)}</div>` : ""}
+
+      ${showPicker ? renderEnrollmentPicker(classItem.classId) : ""}
+
+      ${renderClassEnrollmentList(classItem.classId)}
+
       <div class="planned-link">
         <span class="planned-link-label">학생용 예정 링크</span>
         <code>${getStudentPreviewLink(classItem)}</code>
         <small>학생 로그인 기능은 아직 연결되지 않았습니다. 이번 화면에서는 링크를 표시만 합니다.</small>
       </div>
-
-      <button id="edit-selected-class" class="secondary-button" type="button">수업 수정</button>
     </div>
   `;
 
   document.querySelector("#edit-selected-class").addEventListener("click", () => {
     showEditClassForm(classItem.classId);
   });
+
+  document.querySelector("#add-student-to-class").addEventListener("click", () => {
+    state.enrollmentPickerClassId = showPicker ? null : classItem.classId;
+    state.enrollmentNotice = "";
+    renderClassDetail();
+  });
+
+  bindEnrollmentControls();
+}
+
+function renderEnrollmentPicker(classId) {
+  const visibleStudents = getVisibleStudents();
+
+  if (!visibleStudents.length) {
+    return `
+      <div class="enrollment-picker">
+        <div class="panel-title">
+          <h3>학생 선택</h3>
+          <span>숨김 학생 제외</span>
+        </div>
+        <div class="empty-state">배정할 수 있는 학생이 없습니다. 학생 관리에서 학생을 먼저 등록하세요.</div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="enrollment-picker">
+      <div class="panel-title">
+        <h3>학생 선택</h3>
+        <span>숨김 학생 제외</span>
+      </div>
+      <div class="enrollment-picker-list">
+        ${visibleStudents
+          .map((student) => {
+            const activeOrPausedEnrollment = getActiveOrPausedEnrollment(classId, student.studentId);
+            const endedEnrollment = getEndedEnrollment(classId, student.studentId);
+
+            if (activeOrPausedEnrollment) {
+              return `
+                <div class="student-pick-row is-disabled">
+                  <div>
+                    <strong>${escapeHtml(student.studentName)}</strong>
+                    <span>${escapeHtml(student.school)} ${escapeHtml(student.grade)} - ${escapeHtml(formatPhone(student.phone))}</span>
+                  </div>
+                  <span class="${getStatusClass(activeOrPausedEnrollment.status)}">${ENROLLMENT_STATUS_LABELS[activeOrPausedEnrollment.status]}</span>
+                </div>
+              `;
+            }
+
+            if (endedEnrollment) {
+              return `
+                <div class="student-pick-row">
+                  <div>
+                    <strong>${escapeHtml(student.studentName)}</strong>
+                    <span>${escapeHtml(student.school)} ${escapeHtml(student.grade)} - ${escapeHtml(formatPhone(student.phone))}</span>
+                    <small>수강종료 상태입니다. 다시 수강중으로 변경할 수 있습니다.</small>
+                  </div>
+                  <button class="text-button" type="button" data-enroll-student-id="${student.studentId}">다시 수강중</button>
+                </div>
+              `;
+            }
+
+            return `
+              <div class="student-pick-row">
+                <div>
+                  <strong>${escapeHtml(student.studentName)}</strong>
+                  <span>${escapeHtml(student.school)} ${escapeHtml(student.grade)} - ${escapeHtml(formatPhone(student.phone))}</span>
+                </div>
+                <button class="text-button" type="button" data-enroll-student-id="${student.studentId}">배정</button>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderClassEnrollmentList(classId) {
+  const enrollments = getClassEnrollments(classId);
+
+  if (!enrollments.length) {
+    return `
+      <div class="enrollment-section">
+        <div class="panel-title">
+          <h3>배정 학생</h3>
+          <span>0명</span>
+        </div>
+        <div class="empty-state">아직 이 수업에 배정된 학생이 없습니다. 학생 추가 버튼으로 학생을 배정하세요.</div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="enrollment-section">
+      <div class="panel-title">
+        <h3>배정 학생</h3>
+        <span>${enrollments.length}명</span>
+      </div>
+      <div class="enrollment-list">
+        ${enrollments
+          .map((enrollment) => {
+            const student = getStudentById(enrollment.studentId);
+            if (!student) {
+              return "";
+            }
+
+            return `
+              <div class="enrollment-row ${enrollment.status === "ended" ? "is-ended" : ""}">
+                <div>
+                  <strong>${escapeHtml(student.studentName)}</strong>
+                  <span>${escapeHtml(student.school)} ${escapeHtml(student.grade)} - ${escapeHtml(formatPhone(student.phone))}</span>
+                </div>
+                <div class="enrollment-actions">
+                  <select data-enrollment-status="${enrollment.enrollmentId}" aria-label="수강 상태">
+                    <option value="active" ${enrollment.status === "active" ? "selected" : ""}>수강중</option>
+                    <option value="paused" ${enrollment.status === "paused" ? "selected" : ""}>일시중지</option>
+                    <option value="ended" ${enrollment.status === "ended" ? "selected" : ""}>수강종료</option>
+                  </select>
+                  ${enrollment.status !== "ended" ? `<button class="text-button" type="button" data-end-enrollment-id="${enrollment.enrollmentId}">수강 종료</button>` : ""}
+                </div>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    </div>
+  `;
 }
 
 function renderStudentList() {
@@ -425,6 +702,8 @@ function renderStudentDetail() {
         ${escapeHtml(student.memo || "메모 / 학습 특이사항이 없습니다.")}
       </div>
 
+      ${renderStudentEnrollmentList(student.studentId)}
+
       <button id="edit-selected-student" class="secondary-button" type="button">학생 수정</button>
     </div>
   `;
@@ -432,6 +711,52 @@ function renderStudentDetail() {
   document.querySelector("#edit-selected-student").addEventListener("click", () => {
     showEditStudentForm(student.studentId);
   });
+}
+
+function renderStudentEnrollmentList(studentId) {
+  const enrollments = getStudentEnrollments(studentId);
+
+  if (!enrollments.length) {
+    return `
+      <div class="enrollment-section">
+        <div class="panel-title">
+          <h3>수강 수업</h3>
+          <span>0개</span>
+        </div>
+        <div class="empty-state">아직 배정된 수업이 없습니다. 수업 상세 화면에서 학생을 추가하세요.</div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="enrollment-section">
+      <div class="panel-title">
+        <h3>수강 수업</h3>
+        <span>${enrollments.length}개</span>
+      </div>
+      <div class="enrollment-list">
+        ${enrollments
+          .map((enrollment) => {
+            const classItem = getClassById(enrollment.classId);
+            if (!classItem) {
+              return "";
+            }
+
+            return `
+              <div class="enrollment-row ${enrollment.status === "ended" ? "is-ended" : ""}">
+                <div>
+                  <strong>${escapeHtml(classItem.classTitle)}</strong>
+                  <span>${escapeHtml(classItem.subject)} - ${escapeHtml(classItem.targetSchool)} ${escapeHtml(classItem.targetGrade)}</span>
+                  <small>등록일 ${formatDate(enrollment.joinedAt)}</small>
+                </div>
+                <span class="${getStatusClass(enrollment.status)}">${ENROLLMENT_STATUS_LABELS[enrollment.status]}</span>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    </div>
+  `;
 }
 
 function showCreateClassForm() {
@@ -616,6 +941,107 @@ function handleStudentFormSubmit(event) {
   render();
 }
 
+function enrollStudentInClass(classId, studentId) {
+  const classItem = getClassById(classId);
+  const student = getStudentById(studentId);
+
+  if (!classItem || !student || student.status === "hidden") {
+    state.enrollmentNotice = "배정할 수 없는 학생입니다. 학생 상태를 확인해주세요.";
+    render();
+    return;
+  }
+
+  const activeOrPausedEnrollment = getActiveOrPausedEnrollment(classId, studentId);
+  if (activeOrPausedEnrollment) {
+    state.enrollmentNotice = "이미 이 수업에 수강중 또는 일시중지 상태로 배정된 학생입니다.";
+    render();
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const endedEnrollment = getEndedEnrollment(classId, studentId);
+
+  if (endedEnrollment) {
+    state.enrollments = state.enrollments.map((enrollment) => {
+      if (enrollment.enrollmentId !== endedEnrollment.enrollmentId) {
+        return enrollment;
+      }
+
+      return {
+        ...enrollment,
+        status: "active",
+        endedAt: "",
+        updatedAt: now
+      };
+    });
+    state.enrollmentNotice = `${student.studentName} 학생의 수강종료 기록을 다시 수강중으로 변경했습니다.`;
+  } else {
+    state.enrollments = [
+      {
+        enrollmentId: createEnrollmentId(classId, studentId),
+        studentId,
+        classId,
+        status: "active",
+        joinedAt: now,
+        endedAt: "",
+        createdAt: now,
+        updatedAt: now
+      },
+      ...state.enrollments
+    ];
+    state.enrollmentNotice = `${student.studentName} 학생을 수업에 배정했습니다.`;
+  }
+
+  saveEnrollments();
+  state.enrollmentPickerClassId = null;
+  render();
+}
+
+function updateEnrollmentStatus(enrollmentId, status) {
+  const now = new Date().toISOString();
+
+  state.enrollments = state.enrollments.map((enrollment) => {
+    if (enrollment.enrollmentId !== enrollmentId) {
+      return enrollment;
+    }
+
+    return {
+      ...enrollment,
+      status,
+      endedAt: status === "ended" ? now : "",
+      updatedAt: now
+    };
+  });
+
+  saveEnrollments();
+  state.enrollmentNotice = status === "ended" ? "수강종료 처리했습니다. 기록은 삭제하지 않고 보관됩니다." : "수강 상태를 변경했습니다.";
+  render();
+}
+
+function endEnrollment(enrollmentId) {
+  updateEnrollmentStatus(enrollmentId, "ended");
+}
+
+function bindEnrollmentControls() {
+  document.querySelectorAll("[data-enroll-student-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      enrollStudentInClass(state.selectedClassId, button.dataset.enrollStudentId);
+    });
+  });
+
+  document.querySelectorAll("[data-enrollment-status]").forEach((select) => {
+    select.addEventListener("change", () => {
+      updateEnrollmentStatus(select.dataset.enrollmentStatus, select.value);
+    });
+  });
+
+  document.querySelectorAll("[data-end-enrollment-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      endEnrollment(button.dataset.endEnrollmentId);
+    });
+  });
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -648,6 +1074,7 @@ function render() {
 function init() {
   state.classes = loadClasses();
   state.students = loadStudents();
+  state.enrollments = loadEnrollments();
   state.selectedClassId = state.classes[0]?.classId || null;
   state.selectedStudentId = state.students[0]?.studentId || null;
   bindEvents();
