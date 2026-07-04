@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>제이엠수학 수업 관리</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div class="admin-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">JM</span>
+        <div>
+          <strong>제이엠수학</strong>
+          <span>수업 관리</span>
+        </div>
+      </div>
+
+      <nav class="side-nav" aria-label="관리자 메뉴">
+        <button class="nav-button is-active" type="button" data-view="dashboard">대시보드</button>
+        <button class="nav-button" type="button" data-view="classes">수업 관리</button>
+      </nav>
+
+      <div class="sidebar-note">
+        <strong>1차 관리자 UI</strong>
+        <p>현재 데이터는 이 브라우저에 임시 저장됩니다. 실제 운영 저장소는 다음 단계에서 연결합니다.</p>
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Admin Prototype</p>
+          <h1 id="view-title">대시보드</h1>
+        </div>
+        <div class="storage-pill">브라우저 임시 저장</div>
+      </header>
+
+      <section class="notice" aria-label="임시 저장 안내">
+        <strong>임시 저장 안내</strong>
+        <span>수업 데이터는 현재 사용하는 브라우저의 localStorage에만 저장됩니다. 다른 기기나 브라우저에서는 보이지 않으며, 실제 운영 저장소는 다음 단계에서 연결합니다.</span>
+      </section>
+
+      <section id="dashboard-view" class="view is-active" aria-labelledby="dashboard-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Overview</p>
+            <h2 id="dashboard-heading">운영 현황</h2>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <article class="stat-card">
+            <span>운영중 수업</span>
+            <strong id="active-class-count">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>등록 학생</span>
+            <strong>0</strong>
+            <small>학생 등록 기능 준비중</small>
+          </article>
+          <article class="stat-card">
+            <span>등록 회차</span>
+            <strong>0</strong>
+            <small>회차 관리 기능 준비중</small>
+          </article>
+        </div>
+
+        <article class="panel recent-panel">
+          <div class="panel-title">
+            <h3>최근 작업</h3>
+            <span>임시 표시</span>
+          </div>
+          <div id="recent-work-list" class="recent-list"></div>
+        </article>
+      </section>
+
+      <section id="classes-view" class="view" aria-labelledby="classes-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Classes</p>
+            <h2 id="classes-heading">수업 관리</h2>
+          </div>
+          <button id="new-class-button" class="primary-button" type="button">새 수업 만들기</button>
+        </div>
+
+        <div id="class-form-panel" class="panel form-panel" hidden>
+          <div class="panel-title">
+            <h3 id="form-title">새 수업 만들기</h3>
+            <span>localStorage 임시 저장</span>
+          </div>
+
+          <form id="class-form" class="class-form">
+            <div class="form-grid">
+              <label>
+                <span>수업명</span>
+                <input id="class-title-input" name="classTitle" type="text" placeholder="예: 동인고1 공통수학1 기말 대비" required>
+              </label>
+
+              <label>
+                <span>과목</span>
+                <input id="subject-input" name="subject" type="text" placeholder="예: 공통수학1" required>
+              </label>
+
+              <label>
+                <span>대상 학교</span>
+                <input id="target-school-input" name="targetSchool" type="text" placeholder="예: 동인고" required>
+              </label>
+
+              <label>
+                <span>대상 학년</span>
+                <select id="target-grade-input" name="targetGrade" required>
+                  <option value="">선택</option>
+                  <option value="중1">중1</option>
+                  <option value="중2">중2</option>
+                  <option value="중3">중3</option>
+                  <option value="고1">고1</option>
+                  <option value="고2">고2</option>
+                  <option value="고3">고3</option>
+                </select>
+              </label>
+
+              <label>
+                <span>수업 유형</span>
+                <select id="class-type-input" name="classType" required>
+                  <option value="">선택</option>
+                  <option value="내신 대비">내신 대비</option>
+                  <option value="정규 수업">정규 수업</option>
+                  <option value="특강">특강</option>
+                  <option value="복습 관리">복습 관리</option>
+                </select>
+              </label>
+
+              <label>
+                <span>수업 코드</span>
+                <input id="access-code-input" name="accessCode" type="text" placeholder="예: dongin7979" required>
+              </label>
+
+              <label>
+                <span>상태</span>
+                <select id="status-input" name="status" required>
+                  <option value="active">운영중</option>
+                  <option value="ready">준비중</option>
+                  <option value="ended">종료</option>
+                  <option value="hidden">숨김</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="wide-field">
+              <span>수업 설명</span>
+              <textarea id="description-input" name="description" rows="4" placeholder="관리자가 확인할 수업 설명을 입력하세요."></textarea>
+            </label>
+
+            <div class="form-actions">
+              <button class="primary-button" type="submit">저장</button>
+              <button id="cancel-form-button" class="secondary-button" type="button">취소</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="class-layout">
+          <div class="panel">
+            <div class="panel-title">
+              <h3>수업 목록</h3>
+              <span id="class-count-label">0개</span>
+            </div>
+            <div id="class-list" class="class-list"></div>
+          </div>
+
+          <aside id="class-detail" class="panel detail-panel" aria-live="polite"></aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
