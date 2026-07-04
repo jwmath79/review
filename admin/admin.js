@@ -1,9 +1,17 @@
-const STORAGE_KEY = "jmAdminClasses.v1";
+const CLASS_STORAGE_KEY = "jmAdminClasses.v1";
+const STUDENT_STORAGE_KEY = "jmAdminStudents.v1";
 
-const STATUS_LABELS = {
+const CLASS_STATUS_LABELS = {
   active: "운영중",
   ready: "준비중",
   ended: "종료",
+  hidden: "숨김"
+};
+
+const STUDENT_STATUS_LABELS = {
+  active: "수강중",
+  paused: "일시중지",
+  ended: "수강종료",
   hidden: "숨김"
 };
 
@@ -25,8 +33,11 @@ const starterClasses = [
 
 const state = {
   classes: [],
+  students: [],
   selectedClassId: null,
-  editingClassId: null
+  selectedStudentId: null,
+  editingClassId: null,
+  editingStudentId: null
 };
 
 const elements = {
@@ -34,7 +45,9 @@ const elements = {
   viewTitle: document.querySelector("#view-title"),
   dashboardView: document.querySelector("#dashboard-view"),
   classesView: document.querySelector("#classes-view"),
+  studentsView: document.querySelector("#students-view"),
   activeClassCount: document.querySelector("#active-class-count"),
+  registeredStudentCount: document.querySelector("#registered-student-count"),
   recentWorkList: document.querySelector("#recent-work-list"),
   newClassButton: document.querySelector("#new-class-button"),
   classFormPanel: document.querySelector("#class-form-panel"),
@@ -43,15 +56,24 @@ const elements = {
   cancelFormButton: document.querySelector("#cancel-form-button"),
   classList: document.querySelector("#class-list"),
   classCountLabel: document.querySelector("#class-count-label"),
-  classDetail: document.querySelector("#class-detail")
+  classDetail: document.querySelector("#class-detail"),
+  newStudentButton: document.querySelector("#new-student-button"),
+  studentFormPanel: document.querySelector("#student-form-panel"),
+  studentFormTitle: document.querySelector("#student-form-title"),
+  studentForm: document.querySelector("#student-form"),
+  studentFormError: document.querySelector("#student-form-error"),
+  cancelStudentFormButton: document.querySelector("#cancel-student-form-button"),
+  studentList: document.querySelector("#student-list"),
+  studentCountLabel: document.querySelector("#student-count-label"),
+  studentDetail: document.querySelector("#student-detail")
 };
 
 function loadClasses() {
-  const saved = localStorage.getItem(STORAGE_KEY);
+  const saved = localStorage.getItem(CLASS_STORAGE_KEY);
 
   if (!saved) {
     const initialClasses = [...starterClasses];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(initialClasses));
+    localStorage.setItem(CLASS_STORAGE_KEY, JSON.stringify(initialClasses));
     return initialClasses;
   }
 
@@ -60,13 +82,34 @@ function loadClasses() {
     return Array.isArray(parsed) ? parsed : [...starterClasses];
   } catch (error) {
     const initialClasses = [...starterClasses];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(initialClasses));
+    localStorage.setItem(CLASS_STORAGE_KEY, JSON.stringify(initialClasses));
     return initialClasses;
   }
 }
 
+function loadStudents() {
+  const saved = localStorage.getItem(STUDENT_STORAGE_KEY);
+
+  if (!saved) {
+    localStorage.setItem(STUDENT_STORAGE_KEY, JSON.stringify([]));
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    localStorage.setItem(STUDENT_STORAGE_KEY, JSON.stringify([]));
+    return [];
+  }
+}
+
 function saveClasses() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.classes));
+  localStorage.setItem(CLASS_STORAGE_KEY, JSON.stringify(state.classes));
+}
+
+function saveStudents() {
+  localStorage.setItem(STUDENT_STORAGE_KEY, JSON.stringify(state.students));
 }
 
 function formatDate(value) {
@@ -81,6 +124,33 @@ function formatDate(value) {
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(value));
+}
+
+function normalizePhone(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function formatPhone(value) {
+  const digits = normalizePhone(value);
+
+  if (digits.length === 11) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  }
+
+  if (digits.length === 10) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+
+  return value || "-";
+}
+
+function truncateText(value, maxLength = 48) {
+  const text = String(value || "").trim();
+  if (!text) {
+    return "메모 없음";
+  }
+
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
 }
 
 function createClassId(accessCode) {
@@ -103,6 +173,18 @@ function createClassId(accessCode) {
   return candidate;
 }
 
+function createStudentId(phone) {
+  let candidate = `student-${phone}`;
+  let index = 2;
+
+  while (state.students.some((student) => student.studentId === candidate)) {
+    candidate = `student-${phone}-${index}`;
+    index += 1;
+  }
+
+  return candidate;
+}
+
 function getStatusClass(status) {
   return `status-badge status-${status}`;
 }
@@ -111,26 +193,41 @@ function getStudentPreviewLink(classItem) {
   return `/student/login?classCode=${encodeURIComponent(classItem.accessCode)}`;
 }
 
+function isDuplicateStudentPhone(phone, currentStudentId = null) {
+  return state.students.some((student) => {
+    return student.phone === phone && student.studentId !== currentStudentId;
+  });
+}
+
 function switchView(viewName) {
+  const titles = {
+    dashboard: "대시보드",
+    classes: "수업 관리",
+    students: "학생 관리"
+  };
+
   elements.navButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.view === viewName);
   });
 
   elements.dashboardView.classList.toggle("is-active", viewName === "dashboard");
   elements.classesView.classList.toggle("is-active", viewName === "classes");
-  elements.viewTitle.textContent = viewName === "classes" ? "수업 관리" : "대시보드";
+  elements.studentsView.classList.toggle("is-active", viewName === "students");
+  elements.viewTitle.textContent = titles[viewName] || "대시보드";
 }
 
 function renderDashboard() {
   const activeCount = state.classes.filter((classItem) => classItem.status === "active").length;
+  const visibleStudentCount = state.students.filter((student) => student.status !== "hidden").length;
   elements.activeClassCount.textContent = activeCount;
+  elements.registeredStudentCount.textContent = visibleStudentCount;
 
   const recentClasses = [...state.classes]
     .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
     .slice(0, 3);
 
   if (!recentClasses.length) {
-    elements.recentWorkList.innerHTML = '<div class="empty-state">아직 최근 작업이 없습니다. 수업을 만들면 이 영역에 임시로 표시됩니다.</div>';
+    elements.recentWorkList.innerHTML = '<div class="empty-state">아직 최근 작업이 없습니다. 수업이나 학생 정보를 추가하면 이 영역에 임시로 표시됩니다.</div>';
     return;
   }
 
@@ -138,7 +235,7 @@ function renderDashboard() {
     .map((classItem) => `
       <div class="recent-item">
         <strong>${escapeHtml(classItem.classTitle)}</strong>
-        <span>${STATUS_LABELS[classItem.status]} - ${formatDate(classItem.updatedAt)}</span>
+        <span>${CLASS_STATUS_LABELS[classItem.status]} - ${formatDate(classItem.updatedAt)}</span>
       </div>
     `)
     .join("");
@@ -163,7 +260,7 @@ function renderClassList() {
         <h4>${escapeHtml(classItem.classTitle)}</h4>
         <p>${escapeHtml(classItem.targetSchool)} ${escapeHtml(classItem.targetGrade)} - ${escapeHtml(classItem.subject)}</p>
         <div class="card-footer">
-          <span class="${getStatusClass(classItem.status)}">${STATUS_LABELS[classItem.status]}</span>
+          <span class="${getStatusClass(classItem.status)}">${CLASS_STATUS_LABELS[classItem.status]}</span>
           <span class="class-meta">수업 코드 ${escapeHtml(classItem.accessCode)}</span>
         </div>
       </button>
@@ -173,7 +270,7 @@ function renderClassList() {
   document.querySelectorAll(".class-card").forEach((card) => {
     card.addEventListener("click", () => {
       state.selectedClassId = card.dataset.classId;
-      hideForm();
+      hideClassForm();
       render();
     });
   });
@@ -193,7 +290,7 @@ function renderClassDetail() {
     <div class="detail-content">
       <div class="panel-title">
         <h3>수업 상세</h3>
-        <span class="${getStatusClass(classItem.status)}">${STATUS_LABELS[classItem.status]}</span>
+        <span class="${getStatusClass(classItem.status)}">${CLASS_STATUS_LABELS[classItem.status]}</span>
       </div>
 
       <div>
@@ -237,11 +334,107 @@ function renderClassDetail() {
   `;
 
   document.querySelector("#edit-selected-class").addEventListener("click", () => {
-    showEditForm(classItem.classId);
+    showEditClassForm(classItem.classId);
   });
 }
 
-function showCreateForm() {
+function renderStudentList() {
+  elements.studentCountLabel.textContent = `${state.students.length}명`;
+
+  if (!state.students.length) {
+    elements.studentList.innerHTML = '<div class="empty-state">아직 등록된 학생이 없습니다. 학생 등록 버튼을 눌러 첫 학생을 추가하세요.</div>';
+    elements.studentDetail.innerHTML = '<div class="empty-state">학생을 선택하면 상세 정보가 표시됩니다.</div>';
+    return;
+  }
+
+  if (!state.selectedStudentId || !state.students.some((student) => student.studentId === state.selectedStudentId)) {
+    state.selectedStudentId = state.students[0].studentId;
+  }
+
+  elements.studentList.innerHTML = state.students
+    .map((student) => `
+      <button class="student-card ${student.studentId === state.selectedStudentId ? "is-selected" : ""}" type="button" data-student-id="${student.studentId}">
+        <h4>${escapeHtml(student.studentName)}</h4>
+        <p>${escapeHtml(student.school)} ${escapeHtml(student.grade)} - ${escapeHtml(formatPhone(student.phone))}</p>
+        <p class="student-memo-preview">${escapeHtml(truncateText(student.memo, 42))}</p>
+        <div class="card-footer">
+          <span class="${getStatusClass(student.status)}">${STUDENT_STATUS_LABELS[student.status]}</span>
+          <span class="class-meta">등록 ${formatDate(student.createdAt)}</span>
+        </div>
+      </button>
+    `)
+    .join("");
+
+  document.querySelectorAll(".student-card").forEach((card) => {
+    card.addEventListener("click", () => {
+      state.selectedStudentId = card.dataset.studentId;
+      hideStudentForm();
+      render();
+    });
+  });
+
+  renderStudentDetail();
+}
+
+function renderStudentDetail() {
+  const student = state.students.find((item) => item.studentId === state.selectedStudentId);
+
+  if (!student) {
+    elements.studentDetail.innerHTML = '<div class="empty-state">학생을 선택하면 상세 정보가 표시됩니다.</div>';
+    return;
+  }
+
+  elements.studentDetail.innerHTML = `
+    <div class="detail-content">
+      <div class="panel-title">
+        <h3>학생 상세</h3>
+        <span class="${getStatusClass(student.status)}">${STUDENT_STATUS_LABELS[student.status]}</span>
+      </div>
+
+      <div>
+        <h3>${escapeHtml(student.studentName)}</h3>
+        <p class="class-meta">${escapeHtml(student.school)} ${escapeHtml(student.grade)}</p>
+      </div>
+
+      <div class="detail-row">
+        <span>학생 전화번호</span>
+        <strong>${escapeHtml(formatPhone(student.phone))}</strong>
+      </div>
+      <div class="detail-row">
+        <span>학교</span>
+        <strong>${escapeHtml(student.school)}</strong>
+      </div>
+      <div class="detail-row">
+        <span>학년</span>
+        <strong>${escapeHtml(student.grade)}</strong>
+      </div>
+      <div class="detail-row">
+        <span>학부모 연락처</span>
+        <strong>${escapeHtml(student.parentPhone ? formatPhone(student.parentPhone) : "-")}</strong>
+      </div>
+      <div class="detail-row">
+        <span>생성일</span>
+        <strong>${formatDate(student.createdAt)}</strong>
+      </div>
+      <div class="detail-row">
+        <span>수정일</span>
+        <strong>${formatDate(student.updatedAt)}</strong>
+      </div>
+
+      <div class="detail-description">
+        ${escapeHtml(student.memo || "메모 / 학습 특이사항이 없습니다.")}
+      </div>
+
+      <button id="edit-selected-student" class="secondary-button" type="button">학생 수정</button>
+    </div>
+  `;
+
+  document.querySelector("#edit-selected-student").addEventListener("click", () => {
+    showEditStudentForm(student.studentId);
+  });
+}
+
+function showCreateClassForm() {
   state.editingClassId = null;
   elements.formTitle.textContent = "새 수업 만들기";
   elements.classForm.reset();
@@ -250,7 +443,7 @@ function showCreateForm() {
   elements.classFormPanel.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function showEditForm(classId) {
+function showEditClassForm(classId) {
   const classItem = state.classes.find((item) => item.classId === classId);
   if (!classItem) {
     return;
@@ -270,13 +463,60 @@ function showEditForm(classId) {
   elements.classFormPanel.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function hideForm() {
+function hideClassForm() {
   state.editingClassId = null;
   elements.classForm.reset();
   elements.classFormPanel.hidden = true;
 }
 
-function handleFormSubmit(event) {
+function showCreateStudentForm() {
+  state.editingStudentId = null;
+  elements.studentFormTitle.textContent = "학생 등록";
+  elements.studentForm.reset();
+  elements.studentForm.status.value = "active";
+  hideStudentFormError();
+  elements.studentFormPanel.hidden = false;
+  elements.studentFormPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function showEditStudentForm(studentId) {
+  const student = state.students.find((item) => item.studentId === studentId);
+  if (!student) {
+    return;
+  }
+
+  state.editingStudentId = studentId;
+  elements.studentFormTitle.textContent = "학생 수정";
+  elements.studentForm.studentName.value = student.studentName;
+  elements.studentForm.phone.value = student.phone;
+  elements.studentForm.school.value = student.school;
+  elements.studentForm.grade.value = student.grade;
+  elements.studentForm.parentPhone.value = student.parentPhone;
+  elements.studentForm.memo.value = student.memo;
+  elements.studentForm.status.value = student.status;
+  hideStudentFormError();
+  elements.studentFormPanel.hidden = false;
+  elements.studentFormPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function hideStudentForm() {
+  state.editingStudentId = null;
+  elements.studentForm.reset();
+  hideStudentFormError();
+  elements.studentFormPanel.hidden = true;
+}
+
+function showStudentFormError(message) {
+  elements.studentFormError.textContent = message;
+  elements.studentFormError.hidden = false;
+}
+
+function hideStudentFormError() {
+  elements.studentFormError.textContent = "";
+  elements.studentFormError.hidden = true;
+}
+
+function handleClassFormSubmit(event) {
   event.preventDefault();
 
   const formData = new FormData(elements.classForm);
@@ -317,7 +557,62 @@ function handleFormSubmit(event) {
   }
 
   saveClasses();
-  hideForm();
+  hideClassForm();
+  render();
+}
+
+function handleStudentFormSubmit(event) {
+  event.preventDefault();
+  hideStudentFormError();
+
+  const formData = new FormData(elements.studentForm);
+  const now = new Date().toISOString();
+  const values = {
+    studentName: formData.get("studentName").trim(),
+    phone: normalizePhone(formData.get("phone")),
+    school: formData.get("school").trim(),
+    grade: formData.get("grade"),
+    parentPhone: formData.get("parentPhone").trim(),
+    memo: formData.get("memo").trim(),
+    status: formData.get("status") || "active"
+  };
+
+  if (!values.studentName || !values.phone || !values.school || !values.grade) {
+    showStudentFormError("학생 이름, 학생 전화번호, 학교, 학년은 필수 입력값입니다.");
+    return;
+  }
+
+  if (isDuplicateStudentPhone(values.phone, state.editingStudentId)) {
+    showStudentFormError("이미 같은 전화번호로 등록된 학생이 있습니다. 학생 전화번호를 확인해주세요.");
+    return;
+  }
+
+  if (state.editingStudentId) {
+    state.students = state.students.map((student) => {
+      if (student.studentId !== state.editingStudentId) {
+        return student;
+      }
+
+      return {
+        ...student,
+        ...values,
+        updatedAt: now
+      };
+    });
+    state.selectedStudentId = state.editingStudentId;
+  } else {
+    const newStudent = {
+      studentId: createStudentId(values.phone),
+      ...values,
+      createdAt: now,
+      updatedAt: now
+    };
+    state.students = [newStudent, ...state.students];
+    state.selectedStudentId = newStudent.studentId;
+  }
+
+  saveStudents();
+  hideStudentForm();
   render();
 }
 
@@ -335,19 +630,26 @@ function bindEvents() {
     button.addEventListener("click", () => switchView(button.dataset.view));
   });
 
-  elements.newClassButton.addEventListener("click", showCreateForm);
-  elements.cancelFormButton.addEventListener("click", hideForm);
-  elements.classForm.addEventListener("submit", handleFormSubmit);
+  elements.newClassButton.addEventListener("click", showCreateClassForm);
+  elements.cancelFormButton.addEventListener("click", hideClassForm);
+  elements.classForm.addEventListener("submit", handleClassFormSubmit);
+
+  elements.newStudentButton.addEventListener("click", showCreateStudentForm);
+  elements.cancelStudentFormButton.addEventListener("click", hideStudentForm);
+  elements.studentForm.addEventListener("submit", handleStudentFormSubmit);
 }
 
 function render() {
   renderDashboard();
   renderClassList();
+  renderStudentList();
 }
 
 function init() {
   state.classes = loadClasses();
+  state.students = loadStudents();
   state.selectedClassId = state.classes[0]?.classId || null;
+  state.selectedStudentId = state.students[0]?.studentId || null;
   bindEvents();
   render();
 }
