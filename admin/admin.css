@@ -172,6 +172,8 @@ h3 {
 .panel-title span,
 .class-meta,
 .student-memo-preview,
+.session-summary-preview,
+.session-meta,
 .planned-link-label {
   color: var(--muted);
   font-size: 14px;
@@ -536,9 +538,19 @@ textarea {
   color: #0f604f;
 }
 
+.status-public {
+  background: #dff4ed;
+  color: #0f604f;
+}
+
 .status-ready {
   background: #edf1f5;
   color: #586474;
+}
+
+.status-private {
+  background: #e6eef8;
+  color: #2f5f93;
 }
 
 .status-paused {
@@ -583,6 +595,110 @@ textarea {
   background: var(--panel-soft);
   color: var(--text);
   line-height: 1.6;
+}
+
+.session-section {
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.session-form {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdfb;
+}
+
+.session-list {
+  display: grid;
+  gap: 10px;
+}
+
+.session-card,
+.session-detail {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.session-card.is-selected {
+  border-color: var(--accent);
+  background: #fbfffd;
+}
+
+.session-card h4,
+.session-detail h4 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.session-card p,
+.session-detail p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.session-meta-list,
+.session-card-footer {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.session-meta-list {
+  margin-top: 10px;
+}
+
+.session-card-footer {
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.session-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.video-state,
+.question-state {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--panel-soft);
+  color: var(--accent-strong);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.question-state {
+  background: #edf1f5;
+  color: #586474;
+}
+
+.session-video-link {
+  display: block;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
+.question-placeholder {
+  padding: 14px;
+  border: 1px dashed var(--accent);
+  border-radius: 8px;
+  background: #fbfffd;
+  color: var(--muted);
+  line-height: 1.5;
 }
 
 .planned-link {
@@ -650,11 +766,13 @@ textarea {
   }
 
   .enrollment-row,
-  .student-pick-row {
+  .student-pick-row,
+  .session-card-footer {
     grid-template-columns: 1fr;
   }
 
-  .enrollment-actions {
+  .enrollment-actions,
+  .session-actions {
     justify-content: stretch;
   }
 

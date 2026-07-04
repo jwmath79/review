@@ -1,6 +1,7 @@
 const CLASS_STORAGE_KEY = "jmAdminClasses.v1";
 const STUDENT_STORAGE_KEY = "jmAdminStudents.v1";
 const ENROLLMENT_STORAGE_KEY = "jmAdminEnrollments.v1";
+const SESSION_STORAGE_KEY = "jmAdminSessions.v1";
 
 const CLASS_STATUS_LABELS = {
   active: "운영중",
@@ -20,6 +21,13 @@ const ENROLLMENT_STATUS_LABELS = {
   active: "수강중",
   paused: "일시중지",
   ended: "수강종료"
+};
+
+const SESSION_STATUS_LABELS = {
+  public: "공개",
+  ready: "준비중",
+  private: "관리자만",
+  hidden: "숨김"
 };
 
 const starterClasses = [
@@ -42,12 +50,17 @@ const state = {
   classes: [],
   students: [],
   enrollments: [],
+  sessions: [],
   selectedClassId: null,
   selectedStudentId: null,
+  selectedSessionId: null,
   editingClassId: null,
   editingStudentId: null,
+  editingSessionId: null,
   enrollmentPickerClassId: null,
-  enrollmentNotice: ""
+  enrollmentNotice: "",
+  sessionFormClassId: null,
+  sessionNotice: ""
 };
 
 const elements = {
@@ -58,6 +71,7 @@ const elements = {
   studentsView: document.querySelector("#students-view"),
   activeClassCount: document.querySelector("#active-class-count"),
   registeredStudentCount: document.querySelector("#registered-student-count"),
+  registeredSessionCount: document.querySelector("#registered-session-count"),
   recentWorkList: document.querySelector("#recent-work-list"),
   newClassButton: document.querySelector("#new-class-button"),
   classFormPanel: document.querySelector("#class-form-panel"),
@@ -131,6 +145,23 @@ function loadEnrollments() {
   }
 }
 
+function loadSessions() {
+  const saved = localStorage.getItem(SESSION_STORAGE_KEY);
+
+  if (!saved) {
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify([]));
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify([]));
+    return [];
+  }
+}
+
 function saveClasses() {
   localStorage.setItem(CLASS_STORAGE_KEY, JSON.stringify(state.classes));
 }
@@ -141,6 +172,10 @@ function saveStudents() {
 
 function saveEnrollments() {
   localStorage.setItem(ENROLLMENT_STORAGE_KEY, JSON.stringify(state.enrollments));
+}
+
+function saveSessions() {
+  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(state.sessions));
 }
 
 function formatDate(value) {
@@ -155,6 +190,19 @@ function formatDate(value) {
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(value));
+}
+
+function formatSessionDate(value) {
+  if (!value) {
+    return "-";
+  }
+
+  const parts = String(value).split("-");
+  if (parts.length === 3) {
+    return `${parts[0]}.${parts[1]}.${parts[2]}`;
+  }
+
+  return formatDate(value);
 }
 
 function normalizePhone(value) {
@@ -179,6 +227,15 @@ function truncateText(value, maxLength = 48) {
   const text = String(value || "").trim();
   if (!text) {
     return "메모 없음";
+  }
+
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+}
+
+function truncateSummary(value, maxLength = 58) {
+  const text = String(value || "").trim();
+  if (!text) {
+    return "요약 없음";
   }
 
   return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
@@ -228,6 +285,18 @@ function createEnrollmentId(classId, studentId) {
   return candidate;
 }
 
+function createSessionId(classId) {
+  let candidate = `session-${classId}-${Date.now()}`;
+  let index = 2;
+
+  while (state.sessions.some((session) => session.sessionId === candidate)) {
+    candidate = `session-${classId}-${Date.now()}-${index}`;
+    index += 1;
+  }
+
+  return candidate;
+}
+
 function getStatusClass(status) {
   return `status-badge status-${status}`;
 }
@@ -271,6 +340,33 @@ function getClassEnrollmentStats(classId) {
       },
       { active: 0, paused: 0, ended: 0 }
     );
+}
+
+function getClassSessions(classId) {
+  return state.sessions
+    .filter((session) => session.classId === classId)
+    .sort((a, b) => {
+      const dateDiff = String(b.sessionDate || "").localeCompare(String(a.sessionDate || ""));
+      if (dateDiff !== 0) {
+        return dateDiff;
+      }
+
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+}
+
+function getVisibleClassSessionCount(classId) {
+  return state.sessions.filter((session) => {
+    return session.classId === classId && session.status !== "hidden";
+  }).length;
+}
+
+function getVisibleSessionCount() {
+  return state.sessions.filter((session) => session.status !== "hidden").length;
+}
+
+function getSessionById(sessionId) {
+  return state.sessions.find((session) => session.sessionId === sessionId);
 }
 
 function getClassEnrollments(classId) {
@@ -344,8 +440,10 @@ function switchView(viewName) {
 function renderDashboard() {
   const activeCount = state.classes.filter((classItem) => classItem.status === "active").length;
   const visibleStudentCount = state.students.filter((student) => student.status !== "hidden").length;
+  const visibleSessionCount = getVisibleSessionCount();
   elements.activeClassCount.textContent = activeCount;
   elements.registeredStudentCount.textContent = visibleStudentCount;
+  elements.registeredSessionCount.textContent = visibleSessionCount;
 
   const recentClasses = [...state.classes]
     .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
@@ -382,12 +480,14 @@ function renderClassList() {
   elements.classList.innerHTML = state.classes
     .map((classItem) => {
       const enrollmentStats = getClassEnrollmentStats(classItem.classId);
+      const sessionCount = getVisibleClassSessionCount(classItem.classId);
 
       return `
         <button class="class-card ${classItem.classId === state.selectedClassId ? "is-selected" : ""}" type="button" data-class-id="${classItem.classId}">
           <h4>${escapeHtml(classItem.classTitle)}</h4>
           <p>${escapeHtml(classItem.targetSchool)} ${escapeHtml(classItem.targetGrade)} - ${escapeHtml(classItem.subject)}</p>
-          <p class="class-meta">수강중 ${enrollmentStats.active}명 / 일시중지 ${enrollmentStats.paused}명</p>
+          <p class="class-meta">회차 ${sessionCount}개 / 수강중 ${enrollmentStats.active}명</p>
+          <p class="class-meta">일시중지 ${enrollmentStats.paused}명 / 수강종료 ${enrollmentStats.ended}명</p>
           <div class="card-footer">
             <span class="${getStatusClass(classItem.status)}">${CLASS_STATUS_LABELS[classItem.status]}</span>
             <span class="class-meta">수업 코드 ${escapeHtml(classItem.accessCode)}</span>
@@ -402,6 +502,10 @@ function renderClassList() {
       state.selectedClassId = card.dataset.classId;
       state.enrollmentPickerClassId = null;
       state.enrollmentNotice = "";
+      state.selectedSessionId = null;
+      state.editingSessionId = null;
+      state.sessionFormClassId = null;
+      state.sessionNotice = "";
       hideClassForm();
       render();
     });
@@ -419,6 +523,7 @@ function renderClassDetail() {
   }
 
   const enrollmentStats = getClassEnrollmentStats(classItem.classId);
+  const sessionCount = getVisibleClassSessionCount(classItem.classId);
   const showPicker = state.enrollmentPickerClassId === classItem.classId;
 
   elements.classDetail.innerHTML = `
@@ -453,6 +558,10 @@ function renderClassDetail() {
         <span>수정일</span>
         <strong>${formatDate(classItem.updatedAt)}</strong>
       </div>
+      <div class="detail-row">
+        <span>회차 수</span>
+        <strong>${sessionCount}개</strong>
+      </div>
 
       <div class="detail-description">
         ${escapeHtml(classItem.description || "수업 설명이 없습니다.")}
@@ -474,6 +583,8 @@ function renderClassDetail() {
 
       ${renderClassEnrollmentList(classItem.classId)}
 
+      ${renderSessionManagement(classItem.classId)}
+
       <div class="planned-link">
         <span class="planned-link-label">학생용 예정 링크</span>
         <code>${getStudentPreviewLink(classItem)}</code>
@@ -493,6 +604,173 @@ function renderClassDetail() {
   });
 
   bindEnrollmentControls();
+  bindSessionControls();
+}
+
+function renderSessionManagement(classId) {
+  const sessionCount = getVisibleClassSessionCount(classId);
+  const showForm = state.sessionFormClassId === classId;
+
+  return `
+    <div class="session-section">
+      <div class="panel-title">
+        <h3>회차 관리</h3>
+        <span>숨김 제외 ${sessionCount}개</span>
+      </div>
+
+      <div class="detail-actions">
+        <button id="show-session-form" class="secondary-button" type="button">회차 추가</button>
+      </div>
+
+      ${state.sessionNotice ? `<div class="form-info">${escapeHtml(state.sessionNotice)}</div>` : ""}
+      ${showForm ? renderSessionForm(classId) : ""}
+      ${renderSessionList(classId)}
+      ${renderSessionDetail(classId)}
+    </div>
+  `;
+}
+
+function renderSessionForm(classId) {
+  const editingSession = state.editingSessionId ? getSessionById(state.editingSessionId) : null;
+  const isEditing = editingSession?.classId === classId;
+  const values = isEditing
+    ? editingSession
+    : {
+        sessionTitle: "",
+        sessionDate: "",
+        summary: "",
+        lessonVideoUrl: "",
+        status: "ready"
+      };
+
+  return `
+    <form id="session-form" class="session-form" data-class-id="${escapeHtml(classId)}">
+      <div class="panel-title">
+        <h3>${isEditing ? "회차 수정" : "회차 추가"}</h3>
+        <span>현재 수업에 자동 연결</span>
+      </div>
+
+      <label>
+        <span>회차명</span>
+        <input name="sessionTitle" type="text" value="${escapeHtml(values.sessionTitle)}" placeholder="예: 1회차 - 다항식 복습" required>
+      </label>
+
+      <label>
+        <span>수업 날짜</span>
+        <input name="sessionDate" type="date" value="${escapeHtml(values.sessionDate)}" required>
+      </label>
+
+      <label>
+        <span>수업 요약</span>
+        <textarea name="summary" rows="4" placeholder="이번 회차에서 다룬 내용을 입력하세요.">${escapeHtml(values.summary)}</textarea>
+      </label>
+
+      <label>
+        <span>수업 영상 링크</span>
+        <input name="lessonVideoUrl" type="url" value="${escapeHtml(values.lessonVideoUrl)}" placeholder="https://...">
+      </label>
+
+      <label>
+        <span>상태</span>
+        <select name="status" required>
+          ${Object.entries(SESSION_STATUS_LABELS)
+            .map(([value, label]) => `<option value="${value}" ${values.status === value ? "selected" : ""}>${label}</option>`)
+            .join("")}
+        </select>
+      </label>
+
+      <div class="form-actions">
+        <button class="primary-button" type="submit">저장</button>
+        <button id="cancel-session-form" class="secondary-button" type="button">취소</button>
+      </div>
+    </form>
+  `;
+}
+
+function renderSessionList(classId) {
+  const sessions = getClassSessions(classId);
+
+  if (!sessions.length) {
+    return '<div class="empty-state">아직 이 수업에 등록된 회차가 없습니다. 회차 추가 버튼으로 첫 회차를 등록하세요.</div>';
+  }
+
+  return `
+    <div class="session-list">
+      ${sessions
+        .map((session) => {
+          const isSelected = session.sessionId === state.selectedSessionId;
+          const videoState = session.lessonVideoUrl ? "영상 등록됨" : "영상 준비중";
+          const statusLabel = SESSION_STATUS_LABELS[session.status] || session.status;
+
+          return `
+            <article class="session-card ${isSelected ? "is-selected" : ""}">
+              <h4>${escapeHtml(session.sessionTitle)}</h4>
+              <p class="session-meta">${formatSessionDate(session.sessionDate)}</p>
+              <p class="session-summary-preview">${escapeHtml(truncateSummary(session.summary))}</p>
+              <div class="session-meta-list">
+                <span class="video-state">${videoState}</span>
+                <span class="question-state">문항 준비중</span>
+                <span class="${getStatusClass(session.status)}">${escapeHtml(statusLabel)}</span>
+              </div>
+              <div class="session-card-footer">
+                <span class="session-meta">문항 수 0개</span>
+                <div class="session-actions">
+                  <button class="text-button" type="button" data-session-detail-id="${session.sessionId}">상세</button>
+                  <button class="text-button" type="button" data-session-edit-id="${session.sessionId}">수정</button>
+                </div>
+              </div>
+            </article>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function renderSessionDetail(classId) {
+  const session = getSessionById(state.selectedSessionId);
+
+  if (!session || session.classId !== classId) {
+    return "";
+  }
+
+  const statusLabel = SESSION_STATUS_LABELS[session.status] || session.status;
+  const videoContent = session.lessonVideoUrl
+    ? `<code class="session-video-link">${escapeHtml(session.lessonVideoUrl)}</code>`
+    : '<span class="session-video-link">영상 준비중</span>';
+
+  return `
+    <article class="session-detail">
+      <div class="panel-title">
+        <h3>회차 상세</h3>
+        <span class="${getStatusClass(session.status)}">${escapeHtml(statusLabel)}</span>
+      </div>
+
+      <h4>${escapeHtml(session.sessionTitle)}</h4>
+
+      <div class="detail-row">
+        <span>수업 날짜</span>
+        <strong>${formatSessionDate(session.sessionDate)}</strong>
+      </div>
+      <div class="detail-row">
+        <span>수업 영상 링크</span>
+        <strong>${session.lessonVideoUrl ? "영상 등록됨" : "영상 준비중"}</strong>
+      </div>
+      ${videoContent}
+
+      <div class="detail-description">
+        ${escapeHtml(session.summary || "수업 요약이 없습니다.")}
+      </div>
+
+      <div class="question-placeholder">
+        문항 관리 기능은 다음 단계에서 추가됩니다.
+      </div>
+
+      <div class="detail-actions">
+        <button class="secondary-button" type="button" data-session-edit-id="${session.sessionId}">회차 수정</button>
+      </div>
+    </article>
+  `;
 }
 
 function renderEnrollmentPicker(classId) {
@@ -794,6 +1072,48 @@ function hideClassForm() {
   elements.classFormPanel.hidden = true;
 }
 
+function showCreateSessionForm(classId) {
+  if (!getClassById(classId)) {
+    return;
+  }
+
+  state.sessionFormClassId = classId;
+  state.editingSessionId = null;
+  state.sessionNotice = "";
+  renderClassDetail();
+}
+
+function showEditSessionForm(sessionId) {
+  const session = getSessionById(sessionId);
+  if (!session) {
+    return;
+  }
+
+  state.selectedClassId = session.classId;
+  state.selectedSessionId = session.sessionId;
+  state.sessionFormClassId = session.classId;
+  state.editingSessionId = session.sessionId;
+  state.sessionNotice = "";
+  renderClassDetail();
+}
+
+function hideSessionForm() {
+  state.sessionFormClassId = null;
+  state.editingSessionId = null;
+}
+
+function selectSession(sessionId) {
+  const session = getSessionById(sessionId);
+  if (!session || session.classId !== state.selectedClassId) {
+    return;
+  }
+
+  state.selectedSessionId = session.sessionId;
+  state.sessionFormClassId = null;
+  state.editingSessionId = null;
+  renderClassDetail();
+}
+
 function showCreateStudentForm() {
   state.editingStudentId = null;
   elements.studentFormTitle.textContent = "학생 등록";
@@ -883,6 +1203,73 @@ function handleClassFormSubmit(event) {
 
   saveClasses();
   hideClassForm();
+  render();
+}
+
+function handleSessionFormSubmit(event, classId) {
+  event.preventDefault();
+
+  const classItem = getClassById(classId);
+  if (!classItem) {
+    state.sessionNotice = "회차를 연결할 수업을 찾을 수 없습니다.";
+    renderClassDetail();
+    return;
+  }
+
+  const formData = new FormData(event.currentTarget);
+  const now = new Date().toISOString();
+  const values = {
+    sessionTitle: formData.get("sessionTitle").trim(),
+    sessionDate: formData.get("sessionDate"),
+    summary: formData.get("summary").trim(),
+    lessonVideoUrl: formData.get("lessonVideoUrl").trim(),
+    status: formData.get("status") || "ready"
+  };
+
+  if (!values.sessionTitle || !values.sessionDate) {
+    state.sessionNotice = "회차명과 수업 날짜는 필수 입력값입니다.";
+    renderClassDetail();
+    return;
+  }
+
+  if (state.editingSessionId) {
+    const editingSession = getSessionById(state.editingSessionId);
+    if (!editingSession || editingSession.classId !== classId) {
+      state.sessionNotice = "수정할 회차를 찾을 수 없습니다.";
+      renderClassDetail();
+      return;
+    }
+
+    state.sessions = state.sessions.map((session) => {
+      if (session.sessionId !== state.editingSessionId) {
+        return session;
+      }
+
+      return {
+        ...session,
+        ...values,
+        classId,
+        updatedAt: now
+      };
+    });
+    state.selectedSessionId = state.editingSessionId;
+    state.sessionNotice = "회차를 수정했습니다.";
+  } else {
+    const newSession = {
+      sessionId: createSessionId(classId),
+      classId,
+      ...values,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    state.sessions = [newSession, ...state.sessions];
+    state.selectedSessionId = newSession.sessionId;
+    state.sessionNotice = "회차를 추가했습니다.";
+  }
+
+  saveSessions();
+  hideSessionForm();
   render();
 }
 
@@ -1042,6 +1429,42 @@ function bindEnrollmentControls() {
   });
 }
 
+function bindSessionControls() {
+  const showSessionFormButton = document.querySelector("#show-session-form");
+  if (showSessionFormButton) {
+    showSessionFormButton.addEventListener("click", () => {
+      showCreateSessionForm(state.selectedClassId);
+    });
+  }
+
+  const sessionForm = document.querySelector("#session-form");
+  if (sessionForm) {
+    sessionForm.addEventListener("submit", (event) => {
+      handleSessionFormSubmit(event, sessionForm.dataset.classId);
+    });
+  }
+
+  const cancelSessionFormButton = document.querySelector("#cancel-session-form");
+  if (cancelSessionFormButton) {
+    cancelSessionFormButton.addEventListener("click", () => {
+      hideSessionForm();
+      renderClassDetail();
+    });
+  }
+
+  document.querySelectorAll("[data-session-detail-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectSession(button.dataset.sessionDetailId);
+    });
+  });
+
+  document.querySelectorAll("[data-session-edit-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      showEditSessionForm(button.dataset.sessionEditId);
+    });
+  });
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -1075,6 +1498,7 @@ function init() {
   state.classes = loadClasses();
   state.students = loadStudents();
   state.enrollments = loadEnrollments();
+  state.sessions = loadSessions();
   state.selectedClassId = state.classes[0]?.classId || null;
   state.selectedStudentId = state.students[0]?.studentId || null;
   bindEvents();
