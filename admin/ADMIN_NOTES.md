@@ -12,6 +12,7 @@
 - jmAdminStudents.v1
 - jmAdminEnrollments.v1
 - jmAdminSessions.v1
+- jmAdminMaterials.v1
 
 ## 현재 완료 기능
 - 수업 관리
@@ -19,11 +20,14 @@
 - 학생-수업 배정
 - 회차 관리
 - 4.5차: 관리자 UI 정리 및 학생/수업/회차 삭제 기능 추가
+- 5차: 자료/교재 관리 기본 구조 추가
+  - 수업 상세의 자료/교재 관리 탭에서 자료 목록 확인, 등록, 수정, 숨김 처리 가능
+  - 자료는 회차 연결 없이도 등록 가능
+  - 현재는 localStorage 기반이며 실제 파일 업로드는 연결하지 않음
 
 ## 아직 만들지 않은 기능
 - 문항 관리
 - 자료 업로드
-- 자료/교재 관리
 - PDF 업로드
 - PDF 자동 문항 분할
 - 이미지 개별 문항 등록
@@ -46,7 +50,10 @@
 - 예정 데이터: Materials, QuestionBank, LessonQuestions, QuestionDrafts, SolutionRequests.
 - 수업 자료실 문항 용도: 수업 복습, 숙제, 테스트, 보충.
 - sourceType: pdf_crop, image_upload, manual.
-- 이번 작업에서는 위 기능과 데이터 구조를 구현하지 않고 방향만 기록한다.
+- Materials 기본 구조는 `jmAdminMaterials.v1`에 저장한다.
+- Materials 기본 필드: materialId, classId, sessionId, materialTitle, materialType, usage, subject, grade, unit, tags, status, sourceType, fileRefs, imageRefs, questionRefs, questionCount, memo, createdAt, updatedAt.
+- 자료 상태값은 사용중, 준비중, 보관, 숨김을 사용한다. 학생 공개 여부는 학생 로그인 기능 단계에서 별도 visibility 또는 studentVisible 필드로 검토한다.
+- 이번 5차에서는 PDF 업로드, 이미지 업로드, 자동 문항 분할, 실제 문항 관리는 구현하지 않는다.
 
 ## 주의
 - class.html, session.html, style.css, config.js, jm-admin-7979.html은 건드리지 않는다.

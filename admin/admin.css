@@ -551,6 +551,19 @@ textarea {
   min-width: 860px;
 }
 
+.table-row-material {
+  grid-template-columns: minmax(180px, 1.5fr) minmax(130px, 0.9fr) minmax(90px, 0.6fr) minmax(90px, 0.6fr) minmax(82px, 0.5fr) minmax(88px, 0.55fr) auto;
+}
+
+#classes-view .material-table {
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+#classes-view .table-row-material {
+  min-width: 920px;
+}
+
 .table-actions {
   display: flex;
   gap: 6px;
@@ -732,6 +745,11 @@ textarea {
   color: var(--danger);
 }
 
+.status-archived {
+  background: #f0eee8;
+  color: #6d6049;
+}
+
 .status-hidden {
   background: #ece8f4;
   color: #65538a;
@@ -799,6 +817,13 @@ textarea {
   border-top: 1px solid var(--line);
 }
 
+.material-section {
+  display: grid;
+  gap: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
 .session-form {
   display: grid;
   gap: 14px;
@@ -814,7 +839,8 @@ textarea {
 }
 
 .session-card,
-.session-detail {
+.session-detail,
+.material-detail {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -827,13 +853,15 @@ textarea {
 }
 
 .session-card h4,
-.session-detail h4 {
+.session-detail h4,
+.material-detail h4 {
   margin: 0 0 8px;
   font-size: 16px;
 }
 
 .session-card p,
-.session-detail p {
+.session-detail p,
+.material-detail p {
   margin: 0;
   line-height: 1.5;
 }
@@ -894,6 +922,31 @@ textarea {
   background: #fbfffd;
   color: var(--muted);
   line-height: 1.5;
+}
+
+.material-link-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.material-link-summary div {
+  padding: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: #fbfdfb;
+}
+
+.material-link-summary strong,
+.material-link-summary span {
+  display: block;
+}
+
+.material-link-summary span {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .modal-backdrop {
@@ -1033,9 +1086,14 @@ textarea {
   }
 
   #classes-view .table-row-class,
-  #classes-view .table-row-session {
+  #classes-view .table-row-session,
+  #classes-view .table-row-material {
     grid-template-columns: 1fr;
     min-width: 0;
+  }
+
+  .material-link-summary {
+    grid-template-columns: 1fr;
   }
 
   .list-toolbar {

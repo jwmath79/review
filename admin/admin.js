@@ -2,6 +2,7 @@ const CLASS_STORAGE_KEY = "jmAdminClasses.v1";
 const STUDENT_STORAGE_KEY = "jmAdminStudents.v1";
 const ENROLLMENT_STORAGE_KEY = "jmAdminEnrollments.v1";
 const SESSION_STORAGE_KEY = "jmAdminSessions.v1";
+const MATERIAL_STORAGE_KEY = "jmAdminMaterials.v1";
 
 const CLASS_STATUS_LABELS = {
   active: "운영중",
@@ -30,6 +31,23 @@ const SESSION_STATUS_LABELS = {
   hidden: "숨김"
 };
 
+const MATERIAL_STATUS_LABELS = {
+  active: "사용중",
+  ready: "준비중",
+  archived: "보관",
+  hidden: "숨김"
+};
+
+const MATERIAL_TYPE_OPTIONS = ["교재", "프린트", "시험지", "부교재", "PDF자료", "워크북", "기타"];
+const MATERIAL_USAGE_OPTIONS = ["수업 복습", "숙제", "테스트", "보충", "내신대비", "개별과제", "기타"];
+
+const MATERIAL_SOURCE_LABELS = {
+  manual: "수동 등록",
+  pdf_upload: "PDF 업로드 예정",
+  image_upload: "이미지 등록 예정",
+  pdf_crop: "PDF 분할 예정"
+};
+
 const starterClasses = [
   {
     classId: "class-dongin7979",
@@ -51,16 +69,20 @@ const state = {
   students: [],
   enrollments: [],
   sessions: [],
+  materials: [],
   selectedClassId: null,
   selectedStudentId: null,
   selectedSessionId: null,
+  selectedMaterialId: null,
   editingClassId: null,
   editingStudentId: null,
   editingSessionId: null,
+  editingMaterialId: null,
   enrollmentPickerClassId: null,
   enrollmentNotice: "",
   sessionFormClassId: null,
   sessionNotice: "",
+  materialNotice: "",
   classSearchTerm: "",
   classStatusFilter: "all",
   classSortKey: "updated-desc",
@@ -70,6 +92,9 @@ const state = {
   sessionSearchTerm: "",
   sessionStatusFilter: "all",
   sessionSortKey: "date-desc",
+  materialSearchTerm: "",
+  materialStatusFilter: "all",
+  materialSortKey: "updated-desc",
   classDetailTab: "info"
 };
 
@@ -172,6 +197,23 @@ function loadSessions() {
   }
 }
 
+function loadMaterials() {
+  const saved = localStorage.getItem(MATERIAL_STORAGE_KEY);
+
+  if (!saved) {
+    localStorage.setItem(MATERIAL_STORAGE_KEY, JSON.stringify([]));
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    localStorage.setItem(MATERIAL_STORAGE_KEY, JSON.stringify([]));
+    return [];
+  }
+}
+
 function saveClasses() {
   localStorage.setItem(CLASS_STORAGE_KEY, JSON.stringify(state.classes));
 }
@@ -186,6 +228,10 @@ function saveEnrollments() {
 
 function saveSessions() {
   localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(state.sessions));
+}
+
+function saveMaterials() {
+  localStorage.setItem(MATERIAL_STORAGE_KEY, JSON.stringify(state.materials));
 }
 
 function formatDate(value) {
@@ -342,6 +388,18 @@ function createSessionId(classId) {
   return candidate;
 }
 
+function createMaterialId(classId) {
+  let candidate = `material-${classId}-${Date.now()}`;
+  let index = 2;
+
+  while (state.materials.some((material) => material.materialId === candidate)) {
+    candidate = `material-${classId}-${Date.now()}-${index}`;
+    index += 1;
+  }
+
+  return candidate;
+}
+
 function getStatusClass(status) {
   return `status-badge status-${status}`;
 }
@@ -412,6 +470,44 @@ function getVisibleSessionCount() {
 
 function getSessionById(sessionId) {
   return state.sessions.find((session) => session.sessionId === sessionId);
+}
+
+function getMaterialById(materialId) {
+  return state.materials.find((material) => material.materialId === materialId);
+}
+
+function getClassMaterials(classId) {
+  return state.materials.filter((material) => material.classId === classId);
+}
+
+function getVisibleClassMaterialCount(classId) {
+  return state.materials.filter((material) => {
+    return material.classId === classId && material.status !== "hidden";
+  }).length;
+}
+
+function getVisibleSessionMaterialCount(classId, sessionId) {
+  return state.materials.filter((material) => {
+    return material.classId === classId && material.sessionId === sessionId && material.status !== "hidden";
+  }).length;
+}
+
+function getMaterialSessionLabel(material) {
+  if (!material.sessionId) {
+    return "회차 미지정";
+  }
+
+  const session = getSessionById(material.sessionId);
+  if (!session) {
+    return "삭제된 회차";
+  }
+
+  return session.sessionTitle;
+}
+
+function getMaterialTagsLabel(material) {
+  const tags = Array.isArray(material.tags) ? material.tags : [];
+  return tags.length ? tags.join(", ") : "-";
 }
 
 function getClassEnrollments(classId) {
@@ -558,6 +654,45 @@ function getFilteredClassSessions(classId) {
     }
 
     return String(b.sessionDate || "").localeCompare(String(a.sessionDate || ""));
+  });
+}
+
+function getFilteredClassMaterials(classId) {
+  const keyword = state.materialSearchTerm.trim().toLowerCase();
+  const filtered = state.materials.filter((material) => {
+    const matchesClass = material.classId === classId;
+    const matchesStatus = state.materialStatusFilter === "all" || material.status === state.materialStatusFilter;
+    const searchable = [
+      material.materialTitle,
+      material.materialType,
+      material.usage,
+      material.subject,
+      material.grade,
+      material.unit,
+      getMaterialTagsLabel(material),
+      getMaterialSessionLabel(material),
+      material.memo
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return matchesClass && matchesStatus && (!keyword || searchable.includes(keyword));
+  });
+
+  return filtered.sort((a, b) => {
+    if (state.materialSortKey === "title-asc") {
+      return a.materialTitle.localeCompare(b.materialTitle, "ko");
+    }
+
+    if (state.materialSortKey === "session-asc") {
+      return getMaterialSessionLabel(a).localeCompare(getMaterialSessionLabel(b), "ko");
+    }
+
+    if (state.materialSortKey === "question-desc") {
+      return Number(b.questionCount || 0) - Number(a.questionCount || 0);
+    }
+
+    return new Date(b.updatedAt) - new Date(a.updatedAt);
   });
 }
 
@@ -829,7 +964,7 @@ function renderClassDetail() {
       ${renderClassTabs(activeTab)}
       ${activeTab === "students" ? renderClassStudentsTab(classItem.classId, enrollmentStats) : ""}
       ${activeTab === "sessions" ? renderSessionManagement(classItem.classId) : ""}
-      ${activeTab === "materials" ? renderFutureMaterialsTab() : ""}
+      ${activeTab === "materials" ? renderMaterialManagement(classItem.classId) : ""}
       ${activeTab === "info" ? renderClassInfoTab(classItem, enrollmentStats, sessionCount) : ""}
     </div>
   `;
@@ -837,6 +972,7 @@ function renderClassDetail() {
   bindClassDetailControls(classItem.classId);
   bindEnrollmentControls();
   bindSessionControls();
+  bindMaterialControls();
 }
 
 function renderClassTabs(activeTab) {
@@ -844,7 +980,7 @@ function renderClassTabs(activeTab) {
     ["info", "기본 정보"],
     ["students", "학생 관리"],
     ["sessions", "회차 관리"],
-    ["materials", "자료 관리 예정"]
+    ["materials", "자료/교재 관리"]
   ];
 
   return `
@@ -856,13 +992,196 @@ function renderClassTabs(activeTab) {
   `;
 }
 
-function renderFutureMaterialsTab() {
+function renderMaterialManagement(classId) {
+  const materials = getFilteredClassMaterials(classId);
+  const visibleCount = getVisibleClassMaterialCount(classId);
+  const activeCount = state.materials.filter((material) => material.classId === classId && material.status === "active").length;
+  const readyCount = state.materials.filter((material) => material.classId === classId && material.status === "ready").length;
+  const archivedCount = state.materials.filter((material) => material.classId === classId && material.status === "archived").length;
+  const unassignedCount = state.materials.filter((material) => material.classId === classId && !material.sessionId && material.status !== "hidden").length;
+  const materialToolbar = renderToolbar({
+    searchId: "material-search-input",
+    searchValue: state.materialSearchTerm,
+    searchPlaceholder: "자료명, 회차, 단원, 태그 검색",
+    filterId: "material-status-filter",
+    filterValue: state.materialStatusFilter,
+    filterLabel: "자료 상태 필터",
+    filterOptions: [
+      { value: "all", label: "전체 상태" },
+      ...Object.entries(MATERIAL_STATUS_LABELS).map(([value, label]) => ({ value, label }))
+    ],
+    sortId: "material-sort-select",
+    sortValue: state.materialSortKey,
+    sortOptions: [
+      { value: "updated-desc", label: "최근 수정순" },
+      { value: "title-asc", label: "자료명순" },
+      { value: "session-asc", label: "회차순" },
+      { value: "question-desc", label: "문항 많은순" }
+    ]
+  });
+
+  if (!state.selectedMaterialId || !materials.some((material) => material.materialId === state.selectedMaterialId)) {
+    state.selectedMaterialId = materials[0]?.materialId || null;
+  }
+
   return `
-    <div class="detail-section">
-      <div class="question-placeholder">
-        자료/교재 관리와 문항 관리는 다음 단계에서 추가됩니다. 현재 작업에서는 구조 방향만 기록합니다.
+    <div class="material-section">
+      <div class="panel-title">
+        <h3>자료/교재 관리</h3>
+        <span>숨김 제외 ${visibleCount}개</span>
       </div>
+
+      <div class="detail-actions">
+        <button id="show-material-form" class="secondary-button" type="button">자료/교재 등록</button>
+      </div>
+
+      ${state.materialNotice ? `<div class="form-info">${escapeHtml(state.materialNotice)}</div>` : ""}
+      ${renderSummaryItems([
+        { label: "표시 자료", value: `${materials.length}개` },
+        { label: "사용중", value: `${activeCount}개` },
+        { label: "준비중", value: `${readyCount}개` },
+        { label: "보관", value: `${archivedCount}개` },
+        { label: "회차 미지정", value: `${unassignedCount}개` }
+      ])}
+      ${materialToolbar}
+      ${renderMaterialList(classId, materials)}
+      ${renderMaterialDetail(classId)}
     </div>
+  `;
+}
+
+function renderMaterialList(classId, materials = getFilteredClassMaterials(classId)) {
+  if (!materials.length) {
+    return '<div class="empty-state">조건에 맞는 자료/교재가 없습니다. 자료/교재 등록 버튼으로 첫 자료를 추가하세요.</div>';
+  }
+
+  return `
+    <div class="table-list material-table">
+      ${materials
+        .map((material) => {
+          const isSelected = material.materialId === state.selectedMaterialId;
+          const statusLabel = MATERIAL_STATUS_LABELS[material.status] || material.status;
+
+          return `
+            <div class="table-row table-row-material ${isSelected ? "is-selected" : ""}">
+              <div>
+                <strong>${escapeHtml(material.materialTitle)}</strong>
+                <span>${escapeHtml(material.unit || "단원 미지정")}</span>
+              </div>
+              <div>
+                <strong>${escapeHtml(getMaterialSessionLabel(material))}</strong>
+                <span>연결 회차</span>
+              </div>
+              <div>
+                <strong>${escapeHtml(material.materialType)}</strong>
+                <span>유형</span>
+              </div>
+              <div>
+                <strong>${escapeHtml(material.usage)}</strong>
+                <span>용도</span>
+              </div>
+              <div>
+                <strong>${Number(material.questionCount || 0)}개</strong>
+                <span>예상 문항</span>
+              </div>
+              <div>
+                <span class="${getStatusClass(material.status)}">${escapeHtml(statusLabel)}</span>
+              </div>
+              <div class="table-actions">
+                <button class="text-button" type="button" data-material-detail-id="${material.materialId}">상세</button>
+                <button class="text-button" type="button" data-material-edit-id="${material.materialId}">수정</button>
+                ${material.status !== "hidden" ? `<button class="danger-button" type="button" data-hide-material-id="${material.materialId}">숨김</button>` : ""}
+              </div>
+            </div>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function renderMaterialDetail(classId) {
+  const material = getMaterialById(state.selectedMaterialId);
+
+  if (!material || material.classId !== classId) {
+    return "";
+  }
+
+  const statusLabel = MATERIAL_STATUS_LABELS[material.status] || material.status;
+  const fileCount = Array.isArray(material.fileRefs) ? material.fileRefs.length : 0;
+  const imageCount = Array.isArray(material.imageRefs) ? material.imageRefs.length : 0;
+  const questionRefCount = Array.isArray(material.questionRefs) ? material.questionRefs.length : 0;
+
+  return `
+    <article class="material-detail">
+      <div class="panel-title">
+        <h3>자료 상세</h3>
+        <span class="${getStatusClass(material.status)}">${escapeHtml(statusLabel)}</span>
+      </div>
+
+      <h4>${escapeHtml(material.materialTitle)}</h4>
+
+      <div class="detail-row">
+        <span>연결 회차</span>
+        <strong>${escapeHtml(getMaterialSessionLabel(material))}</strong>
+      </div>
+      <div class="detail-row">
+        <span>유형 / 용도</span>
+        <strong>${escapeHtml(material.materialType)} / ${escapeHtml(material.usage)}</strong>
+      </div>
+      <div class="detail-row">
+        <span>과목 / 대상</span>
+        <strong>${escapeHtml(material.subject || "-")} / ${escapeHtml(material.grade || "-")}</strong>
+      </div>
+      <div class="detail-row">
+        <span>단원</span>
+        <strong>${escapeHtml(material.unit || "-")}</strong>
+      </div>
+      <div class="detail-row">
+        <span>태그</span>
+        <strong>${escapeHtml(getMaterialTagsLabel(material))}</strong>
+      </div>
+      <div class="detail-row">
+        <span>자료 방식</span>
+        <strong>${escapeHtml(MATERIAL_SOURCE_LABELS[material.sourceType] || material.sourceType || "수동 등록")}</strong>
+      </div>
+      <div class="detail-row">
+        <span>예상 문항</span>
+        <strong>${Number(material.questionCount || 0)}개</strong>
+      </div>
+      <div class="detail-row">
+        <span>수정일</span>
+        <strong>${formatDate(material.updatedAt)}</strong>
+      </div>
+
+      <div class="detail-description">
+        ${escapeHtml(material.memo || "자료 메모가 없습니다.")}
+      </div>
+
+      <div class="material-link-summary">
+        <div>
+          <strong>${fileCount}개</strong>
+          <span>파일 연결 예정</span>
+        </div>
+        <div>
+          <strong>${imageCount}개</strong>
+          <span>이미지 연결 예정</span>
+        </div>
+        <div>
+          <strong>${questionRefCount}개</strong>
+          <span>문항 연결 예정</span>
+        </div>
+      </div>
+
+      <div class="question-placeholder">
+        PDF 업로드, 이미지 업로드, 문항 분할/연결은 다음 단계에서 추가됩니다. 현재는 연결 필드만 준비합니다.
+      </div>
+
+      <div class="detail-actions">
+        <button class="secondary-button" type="button" data-material-edit-id="${material.materialId}">자료 수정</button>
+        ${material.status !== "hidden" ? `<button class="danger-button" type="button" data-hide-material-id="${material.materialId}">자료 숨김 처리</button>` : ""}
+      </div>
+    </article>
   `;
 }
 
@@ -1092,6 +1411,7 @@ function renderSessionList(classId, sessions = getFilteredClassSessions(classId)
           const isSelected = session.sessionId === state.selectedSessionId;
           const videoState = session.lessonVideoUrl ? "영상 등록됨" : "영상 준비중";
           const statusLabel = SESSION_STATUS_LABELS[session.status] || session.status;
+          const materialCount = getVisibleSessionMaterialCount(classId, session.sessionId);
 
           return `
             <div class="table-row table-row-session ${isSelected ? "is-selected" : ""}">
@@ -1107,7 +1427,7 @@ function renderSessionList(classId, sessions = getFilteredClassSessions(classId)
                 <span class="video-state">${videoState}</span>
               </div>
               <div>
-                <strong>준비중</strong>
+                <strong>${materialCount}개</strong>
                 <span>자료 수</span>
               </div>
               <div>
@@ -1731,6 +2051,162 @@ function selectSession(sessionId) {
   renderClassDetail();
 }
 
+function normalizeTags(value) {
+  return String(value || "")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+function renderMaterialForm(classId) {
+  const classItem = getClassById(classId);
+  const editingMaterial = state.editingMaterialId ? getMaterialById(state.editingMaterialId) : null;
+  const isEditing = editingMaterial?.classId === classId;
+  const classSessions = getClassSessions(classId).filter((session) => session.status !== "hidden");
+  const values = isEditing
+    ? {
+        ...editingMaterial,
+        tagsText: getMaterialTagsLabel(editingMaterial) === "-" ? "" : getMaterialTagsLabel(editingMaterial)
+      }
+    : {
+        materialTitle: "",
+        sessionId: "",
+        materialType: "교재",
+        usage: "수업 복습",
+        subject: classItem?.subject || "",
+        grade: classItem?.targetGrade || "",
+        unit: "",
+        tagsText: "",
+        status: "ready",
+        sourceType: "manual",
+        questionCount: 0,
+        memo: ""
+      };
+
+  return `
+    <form id="material-form" class="modal-form material-form" data-class-id="${escapeHtml(classId)}">
+      <div class="form-grid">
+        <label>
+          <span>자료/교재명</span>
+          <input name="materialTitle" type="text" value="${escapeHtml(values.materialTitle)}" placeholder="예: 다항식 복습 프린트" required>
+        </label>
+
+        <label>
+          <span>연결 회차</span>
+          <select name="sessionId">
+            <option value="">회차 미지정</option>
+            ${classSessions
+              .map((session) => `<option value="${session.sessionId}" ${values.sessionId === session.sessionId ? "selected" : ""}>${escapeHtml(session.sessionTitle)}</option>`)
+              .join("")}
+          </select>
+        </label>
+
+        <label>
+          <span>자료 유형</span>
+          <select name="materialType" required>
+            ${MATERIAL_TYPE_OPTIONS.map((type) => `<option value="${type}" ${values.materialType === type ? "selected" : ""}>${type}</option>`).join("")}
+          </select>
+        </label>
+
+        <label>
+          <span>용도</span>
+          <select name="usage" required>
+            ${MATERIAL_USAGE_OPTIONS.map((usage) => `<option value="${usage}" ${values.usage === usage ? "selected" : ""}>${usage}</option>`).join("")}
+          </select>
+        </label>
+
+        <label>
+          <span>과목</span>
+          <input name="subject" type="text" value="${escapeHtml(values.subject)}" placeholder="예: 공통수학1">
+        </label>
+
+        <label>
+          <span>대상</span>
+          <input name="grade" type="text" value="${escapeHtml(values.grade)}" placeholder="예: 고1, 동인고1">
+        </label>
+
+        <label>
+          <span>단원</span>
+          <input name="unit" type="text" value="${escapeHtml(values.unit)}" placeholder="예: 다항식">
+        </label>
+
+        <label>
+          <span>예상 문항 수</span>
+          <input name="questionCount" type="number" min="0" step="1" value="${Number(values.questionCount || 0)}">
+        </label>
+
+        <label>
+          <span>상태</span>
+          <select name="status" required>
+            ${Object.entries(MATERIAL_STATUS_LABELS)
+              .map(([value, label]) => `<option value="${value}" ${values.status === value ? "selected" : ""}>${label}</option>`)
+              .join("")}
+          </select>
+        </label>
+
+        <label>
+          <span>등록 방식</span>
+          <select name="sourceType" required>
+            ${Object.entries(MATERIAL_SOURCE_LABELS)
+              .map(([value, label]) => `<option value="${value}" ${values.sourceType === value ? "selected" : ""} ${value === "manual" ? "" : "disabled"}>${label}</option>`)
+              .join("")}
+          </select>
+        </label>
+      </div>
+
+      <label class="wide-field">
+        <span>태그</span>
+        <input name="tags" type="text" value="${escapeHtml(values.tagsText)}" placeholder="쉼표로 구분: 기말, 서술형, 고난도">
+      </label>
+
+      <label class="wide-field">
+        <span>메모</span>
+        <textarea name="memo" rows="4" placeholder="자료 사용 목적, 출처, 관리 메모를 입력하세요.">${escapeHtml(values.memo)}</textarea>
+      </label>
+
+      <div class="form-info">
+        PDF 업로드, 이미지 개별 등록, 문항 연결은 다음 단계에서 추가됩니다. 현재는 fileRefs, imageRefs, questionRefs 배열만 준비합니다.
+      </div>
+
+      <div class="form-actions">
+        <button class="primary-button" type="submit">저장</button>
+        <button class="secondary-button" type="button" data-close-modal>취소</button>
+      </div>
+    </form>
+  `;
+}
+
+function showCreateMaterialForm(classId) {
+  if (!getClassById(classId)) {
+    return;
+  }
+
+  state.editingMaterialId = null;
+  state.materialNotice = "";
+  openModal("자료/교재 등록", renderMaterialForm(classId), (modal) => {
+    modal.querySelector("#material-form").addEventListener("submit", (event) => {
+      handleMaterialFormSubmit(event, classId);
+    });
+  });
+}
+
+function showEditMaterialForm(materialId) {
+  const material = getMaterialById(materialId);
+  if (!material) {
+    return;
+  }
+
+  state.selectedClassId = material.classId;
+  state.selectedMaterialId = material.materialId;
+  state.editingMaterialId = material.materialId;
+  state.materialNotice = "";
+  openModal("자료/교재 수정", renderMaterialForm(material.classId), (modal) => {
+    modal.querySelector("#material-form").addEventListener("submit", (event) => {
+      handleMaterialFormSubmit(event, material.classId);
+    });
+  });
+}
+
 function renderStudentForm(values, isEditing) {
   return `
     <form id="student-form-modal" class="modal-form">
@@ -1969,6 +2445,98 @@ function handleSessionFormSubmit(event, classId) {
   render();
 }
 
+function handleMaterialFormSubmit(event, classId) {
+  event.preventDefault();
+
+  const classItem = getClassById(classId);
+  if (!classItem) {
+    state.materialNotice = "자료를 연결할 수업을 찾을 수 없습니다.";
+    renderClassDetail();
+    return;
+  }
+
+  const formData = new FormData(event.currentTarget);
+  const now = new Date().toISOString();
+  const sessionId = formData.get("sessionId") || null;
+  const questionCount = Math.max(0, Number.parseInt(formData.get("questionCount"), 10) || 0);
+  const values = {
+    sessionId,
+    materialTitle: formData.get("materialTitle").trim(),
+    materialType: formData.get("materialType"),
+    usage: formData.get("usage"),
+    subject: formData.get("subject").trim(),
+    grade: formData.get("grade").trim(),
+    unit: formData.get("unit").trim(),
+    tags: normalizeTags(formData.get("tags")),
+    status: formData.get("status") || "ready",
+    sourceType: formData.get("sourceType") || "manual",
+    questionCount,
+    memo: formData.get("memo").trim()
+  };
+
+  if (!values.materialTitle) {
+    state.materialNotice = "자료/교재명은 필수 입력값입니다.";
+    renderClassDetail();
+    return;
+  }
+
+  if (values.sessionId) {
+    const session = getSessionById(values.sessionId);
+    if (!session || session.classId !== classId) {
+      state.materialNotice = "연결할 회차를 찾을 수 없습니다.";
+      renderClassDetail();
+      return;
+    }
+  }
+
+  if (state.editingMaterialId) {
+    const editingMaterial = getMaterialById(state.editingMaterialId);
+    if (!editingMaterial || editingMaterial.classId !== classId) {
+      state.materialNotice = "수정할 자료를 찾을 수 없습니다.";
+      renderClassDetail();
+      return;
+    }
+
+    state.materials = state.materials.map((material) => {
+      if (material.materialId !== state.editingMaterialId) {
+        return material;
+      }
+
+      return {
+        ...material,
+        ...values,
+        classId,
+        fileRefs: Array.isArray(material.fileRefs) ? material.fileRefs : [],
+        imageRefs: Array.isArray(material.imageRefs) ? material.imageRefs : [],
+        questionRefs: Array.isArray(material.questionRefs) ? material.questionRefs : [],
+        updatedAt: now
+      };
+    });
+    state.selectedMaterialId = state.editingMaterialId;
+    state.materialNotice = "자료/교재를 수정했습니다.";
+  } else {
+    const newMaterial = {
+      materialId: createMaterialId(classId),
+      classId,
+      ...values,
+      fileRefs: [],
+      imageRefs: [],
+      questionRefs: [],
+      createdAt: now,
+      updatedAt: now
+    };
+
+    state.materials = [newMaterial, ...state.materials];
+    state.selectedMaterialId = newMaterial.materialId;
+    state.materialNotice = "자료/교재를 등록했습니다.";
+  }
+
+  saveMaterials();
+  state.editingMaterialId = null;
+  closeModal();
+  render();
+}
+
 function handleStudentFormSubmit(event) {
   event.preventDefault();
   hideStudentFormError();
@@ -2200,6 +2768,17 @@ function deleteClass(classId) {
   state.classes = state.classes.filter((item) => item.classId !== classId);
   state.enrollments = state.enrollments.filter((enrollment) => enrollment.classId !== classId);
   state.sessions = state.sessions.filter((session) => session.classId !== classId);
+  state.materials = state.materials.map((material) => {
+    if (material.classId !== classId) {
+      return material;
+    }
+
+    return {
+      ...material,
+      status: "hidden",
+      updatedAt: new Date().toISOString()
+    };
+  });
 
   if (state.selectedClassId === classId) {
     state.selectedClassId = state.classes[0]?.classId || null;
@@ -2207,15 +2786,19 @@ function deleteClass(classId) {
   }
 
   state.selectedSessionId = null;
+  state.selectedMaterialId = null;
   state.editingSessionId = null;
+  state.editingMaterialId = null;
   state.sessionFormClassId = null;
   state.enrollmentPickerClassId = null;
   state.enrollmentNotice = "";
   state.sessionNotice = "";
+  state.materialNotice = "";
 
   saveClasses();
   saveEnrollments();
   saveSessions();
+  saveMaterials();
   closeModal();
   render();
 }
@@ -2227,6 +2810,17 @@ function deleteSession(sessionId) {
   }
 
   state.sessions = state.sessions.filter((item) => item.sessionId !== sessionId);
+  state.materials = state.materials.map((material) => {
+    if (material.sessionId !== sessionId) {
+      return material;
+    }
+
+    return {
+      ...material,
+      sessionId: null,
+      updatedAt: new Date().toISOString()
+    };
+  });
 
   if (state.selectedSessionId === sessionId) {
     state.selectedSessionId = null;
@@ -2238,6 +2832,35 @@ function deleteSession(sessionId) {
   }
 
   saveSessions();
+  saveMaterials();
+  closeModal();
+  render();
+}
+
+function hideMaterial(materialId) {
+  const material = getMaterialById(materialId);
+  if (!material || !confirmDelete("이 자료/교재를 숨김 처리합니다. 목록에서 숨김 상태로 보관되며 나중에 수정해서 다시 사용할 수 있습니다. 계속하시겠습니까?")) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  state.materials = state.materials.map((item) => {
+    if (item.materialId !== materialId) {
+      return item;
+    }
+
+    return {
+      ...item,
+      status: "hidden",
+      updatedAt: now
+    };
+  });
+
+  state.selectedMaterialId = materialId;
+  state.editingMaterialId = null;
+  state.materialNotice = "자료/교재를 숨김 처리했습니다.";
+
+  saveMaterials();
   closeModal();
   render();
 }
@@ -2329,6 +2952,64 @@ function bindSessionControls() {
   });
 }
 
+function bindMaterialControls() {
+  const showMaterialFormButton = document.querySelector("#show-material-form");
+  const searchInput = document.querySelector("#material-search-input");
+  const statusFilter = document.querySelector("#material-status-filter");
+  const sortSelect = document.querySelector("#material-sort-select");
+
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      state.materialSearchTerm = searchInput.value;
+      renderClassDetail();
+    });
+  }
+
+  if (statusFilter) {
+    statusFilter.addEventListener("change", () => {
+      state.materialStatusFilter = statusFilter.value;
+      renderClassDetail();
+    });
+  }
+
+  if (sortSelect) {
+    sortSelect.addEventListener("change", () => {
+      state.materialSortKey = sortSelect.value;
+      renderClassDetail();
+    });
+  }
+
+  if (showMaterialFormButton) {
+    showMaterialFormButton.addEventListener("click", () => {
+      showCreateMaterialForm(state.selectedClassId);
+    });
+  }
+
+  document.querySelectorAll("[data-material-detail-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const material = getMaterialById(button.dataset.materialDetailId);
+      if (!material || material.classId !== state.selectedClassId) {
+        return;
+      }
+
+      state.selectedMaterialId = material.materialId;
+      renderClassDetail();
+    });
+  });
+
+  document.querySelectorAll("[data-material-edit-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      showEditMaterialForm(button.dataset.materialEditId);
+    });
+  });
+
+  document.querySelectorAll("[data-hide-material-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      hideMaterial(button.dataset.hideMaterialId);
+    });
+  });
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -2363,6 +3044,7 @@ function init() {
   state.students = loadStudents();
   state.enrollments = loadEnrollments();
   state.sessions = loadSessions();
+  state.materials = loadMaterials();
   state.selectedClassId = state.classes[0]?.classId || null;
   state.selectedStudentId = state.students[0]?.studentId || null;
   bindEvents();
