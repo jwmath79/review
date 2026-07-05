@@ -126,7 +126,9 @@ button {
 .topbar,
 .section-heading,
 .panel-title,
-.form-actions {
+.form-actions,
+.list-toolbar,
+.tab-list {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -276,6 +278,7 @@ h3 {
 
 .primary-button,
 .secondary-button,
+.danger-button,
 .text-button {
   min-height: 42px;
   border-radius: 8px;
@@ -295,6 +298,13 @@ h3 {
   border: 1px solid var(--line);
   background: #ffffff;
   color: var(--text);
+}
+
+.danger-button {
+  padding: 0 14px;
+  border: 1px solid var(--danger);
+  background: #fff1f1;
+  color: var(--danger);
 }
 
 .text-button {
@@ -396,6 +406,54 @@ textarea {
   margin-top: 16px;
 }
 
+.list-toolbar {
+  align-items: stretch;
+  margin-top: 16px;
+}
+
+.list-toolbar input,
+.list-toolbar select {
+  min-width: 0;
+}
+
+.table-list {
+  display: grid;
+  gap: 8px;
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(120px, 0.7fr) minmax(120px, 0.7fr) auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  text-align: left;
+}
+
+.table-row:hover,
+.table-row.is-selected {
+  border-color: var(--accent);
+  background: #fbfffd;
+}
+
+.table-row strong,
+.table-row span,
+.table-row small {
+  display: block;
+}
+
+.table-row span,
+.table-row small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
 .class-card,
 .student-card {
   width: 100%;
@@ -446,7 +504,8 @@ textarea {
 }
 
 .enrollment-section,
-.enrollment-picker {
+.enrollment-picker,
+.detail-section {
   display: grid;
   gap: 12px;
   padding-top: 14px;
@@ -578,6 +637,28 @@ textarea {
   gap: 14px;
 }
 
+.tab-list {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tab-button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.tab-button.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
 .detail-row {
   padding-bottom: 12px;
   border-bottom: 1px solid var(--line);
@@ -701,6 +782,60 @@ textarea {
   line-height: 1.5;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(23, 35, 29, 0.42);
+}
+
+.modal-backdrop[hidden] {
+  display: none;
+}
+
+.modal-panel {
+  width: min(720px, 100%);
+  max-height: min(88vh, 820px);
+  overflow: auto;
+  padding: 20px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(23, 35, 29, 0.2);
+}
+
+.modal-body {
+  margin-top: 18px;
+}
+
+.modal-form {
+  display: grid;
+  gap: 14px;
+}
+
+.danger-zone {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #f1c4c4;
+}
+
+.danger-zone span,
+.danger-zone small {
+  color: var(--danger);
+  line-height: 1.45;
+}
+
+.picker-list {
+  display: grid;
+  gap: 10px;
+  max-height: 430px;
+  overflow: auto;
+}
+
 .planned-link {
   padding: 14px;
   border: 1px dashed var(--accent);
@@ -761,14 +896,20 @@ textarea {
 
   .primary-button,
   .secondary-button,
+  .danger-button,
   .text-button {
     width: 100%;
   }
 
   .enrollment-row,
   .student-pick-row,
-  .session-card-footer {
+  .session-card-footer,
+  .table-row {
     grid-template-columns: 1fr;
+  }
+
+  .list-toolbar {
+    flex-direction: column;
   }
 
   .enrollment-actions,
