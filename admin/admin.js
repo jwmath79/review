@@ -63,8 +63,13 @@ const state = {
   sessionNotice: "",
   classSearchTerm: "",
   classStatusFilter: "all",
+  classSortKey: "updated-desc",
   studentSearchTerm: "",
   studentStatusFilter: "all",
+  studentSortKey: "updated-desc",
+  sessionSearchTerm: "",
+  sessionStatusFilter: "all",
+  sessionSortKey: "date-desc",
   classDetailTab: "info"
 };
 
@@ -244,6 +249,41 @@ function truncateSummary(value, maxLength = 58) {
   }
 
   return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+}
+
+function renderSummaryItems(items) {
+  return `
+    <div class="summary-strip">
+      ${items
+        .map(
+          (item) => `
+            <div class="summary-item">
+              <span>${escapeHtml(item.label)}</span>
+              <strong>${escapeHtml(item.value)}</strong>
+            </div>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderToolbar({ searchId, searchValue, searchPlaceholder, filterId, filterValue, filterLabel, filterOptions, sortId, sortValue, sortOptions }) {
+  return `
+    <div class="list-toolbar">
+      <input id="${searchId}" type="search" value="${escapeHtml(searchValue)}" placeholder="${escapeHtml(searchPlaceholder)}">
+      <select id="${filterId}" aria-label="${escapeHtml(filterLabel)}">
+        ${filterOptions
+          .map((option) => `<option value="${option.value}" ${filterValue === option.value ? "selected" : ""}>${escapeHtml(option.label)}</option>`)
+          .join("")}
+      </select>
+      <select id="${sortId}" aria-label="정렬 기준">
+        ${sortOptions
+          .map((option) => `<option value="${option.value}" ${sortValue === option.value ? "selected" : ""}>${escapeHtml(option.label)}</option>`)
+          .join("")}
+      </select>
+    </div>
+  `;
 }
 
 function createClassId(accessCode) {
@@ -428,38 +468,96 @@ function getVisibleStudents() {
 function getFilteredClasses() {
   const keyword = state.classSearchTerm.trim().toLowerCase();
 
-  return state.classes.filter((classItem) => {
-    const matchesStatus = state.classStatusFilter === "all" || classItem.status === state.classStatusFilter;
-    const searchable = [
-      classItem.classTitle,
-      classItem.subject,
-      classItem.targetSchool,
-      classItem.targetGrade,
-      classItem.accessCode
-    ]
-      .join(" ")
-      .toLowerCase();
+  const filtered = state.classes.filter((classItem) => {
+      const matchesStatus = state.classStatusFilter === "all" || classItem.status === state.classStatusFilter;
+      const searchable = [
+        classItem.classTitle,
+        classItem.subject,
+        classItem.targetSchool,
+        classItem.targetGrade,
+        classItem.accessCode
+      ]
+        .join(" ")
+        .toLowerCase();
 
-    return matchesStatus && (!keyword || searchable.includes(keyword));
+      return matchesStatus && (!keyword || searchable.includes(keyword));
+    });
+
+  return filtered.sort((a, b) => {
+    if (state.classSortKey === "title-asc") {
+      return a.classTitle.localeCompare(b.classTitle, "ko");
+    }
+
+    if (state.classSortKey === "student-desc") {
+      return getClassEnrollmentStats(b.classId).active - getClassEnrollmentStats(a.classId).active;
+    }
+
+    if (state.classSortKey === "session-desc") {
+      return getVisibleClassSessionCount(b.classId) - getVisibleClassSessionCount(a.classId);
+    }
+
+    return new Date(b.updatedAt) - new Date(a.updatedAt);
   });
 }
 
 function getFilteredStudents() {
   const keyword = state.studentSearchTerm.trim().toLowerCase();
 
-  return state.students.filter((student) => {
-    const matchesStatus = state.studentStatusFilter === "all" || student.status === state.studentStatusFilter;
+  const filtered = state.students.filter((student) => {
+      const matchesStatus = state.studentStatusFilter === "all" || student.status === state.studentStatusFilter;
+      const searchable = [
+        student.studentName,
+        student.school,
+        student.grade,
+        formatPhone(student.phone),
+        student.memo
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return matchesStatus && (!keyword || searchable.includes(keyword));
+    });
+
+  return filtered.sort((a, b) => {
+    if (state.studentSortKey === "name-asc") {
+      return a.studentName.localeCompare(b.studentName, "ko");
+    }
+
+    if (state.studentSortKey === "class-desc") {
+      return getStudentEnrollments(b.studentId).length - getStudentEnrollments(a.studentId).length;
+    }
+
+    return new Date(b.updatedAt) - new Date(a.updatedAt);
+  });
+}
+
+function getFilteredClassSessions(classId) {
+  const keyword = state.sessionSearchTerm.trim().toLowerCase();
+  const filtered = state.sessions.filter((session) => {
+    const matchesClass = session.classId === classId;
+    const matchesStatus = state.sessionStatusFilter === "all" || session.status === state.sessionStatusFilter;
     const searchable = [
-      student.studentName,
-      student.school,
-      student.grade,
-      formatPhone(student.phone),
-      student.memo
+      session.sessionTitle,
+      session.sessionDate,
+      session.summary,
+      session.lessonVideoUrl
     ]
       .join(" ")
       .toLowerCase();
 
-    return matchesStatus && (!keyword || searchable.includes(keyword));
+    return matchesClass && matchesStatus && (!keyword || searchable.includes(keyword));
+  });
+
+  return filtered.sort((a, b) => {
+    if (state.sessionSortKey === "title-asc") {
+      return a.sessionTitle.localeCompare(b.sessionTitle, "ko");
+    }
+
+    if (state.sessionSortKey === "updated-desc") {
+      return new Date(b.updatedAt) - new Date(a.updatedAt);
+    }
+
+    return String(b.sessionDate || "").localeCompare(String(a.sessionDate || ""));
   });
 }
 
@@ -559,25 +657,55 @@ function renderDashboard() {
 function renderClassList() {
   const filteredClasses = getFilteredClasses();
   elements.classCountLabel.textContent = `${filteredClasses.length}/${state.classes.length}개`;
+  const activeClassCount = state.classes.filter((classItem) => classItem.status === "active").length;
+  const readyClassCount = state.classes.filter((classItem) => classItem.status === "ready").length;
+  const totalActiveStudents = state.classes.reduce((total, classItem) => total + getClassEnrollmentStats(classItem.classId).active, 0);
+  const classToolbar = renderToolbar({
+    searchId: "class-search-input",
+    searchValue: state.classSearchTerm,
+    searchPlaceholder: "수업명, 학교, 과목 검색",
+    filterId: "class-status-filter",
+    filterValue: state.classStatusFilter,
+    filterLabel: "수업 상태 필터",
+    filterOptions: [
+      { value: "all", label: "전체 상태" },
+      ...Object.entries(CLASS_STATUS_LABELS).map(([value, label]) => ({ value, label }))
+    ],
+    sortId: "class-sort-select",
+    sortValue: state.classSortKey,
+    sortOptions: [
+      { value: "updated-desc", label: "최근 수정순" },
+      { value: "title-asc", label: "수업명순" },
+      { value: "student-desc", label: "학생 많은순" },
+      { value: "session-desc", label: "회차 많은순" }
+    ]
+  });
 
   if (!state.classes.length) {
-    elements.classList.innerHTML = '<div class="empty-state">등록된 수업이 없습니다. 새 수업 만들기 버튼으로 첫 수업을 추가하세요.</div>';
+    elements.classList.innerHTML = `
+      ${renderSummaryItems([
+        { label: "전체 수업", value: "0개" },
+        { label: "운영중", value: "0개" },
+        { label: "등록 학생", value: "0명" }
+      ])}
+      ${classToolbar}
+      <div class="empty-state">등록된 수업이 없습니다. 새 수업 만들기 버튼으로 첫 수업을 추가하세요.</div>
+    `;
     elements.classDetail.innerHTML = '<div class="empty-state">수업을 선택하면 상세 정보가 표시됩니다.</div>';
+    bindClassListControls();
     return;
   }
 
   if (!filteredClasses.length) {
     state.selectedClassId = null;
     elements.classList.innerHTML = `
-      <div class="list-toolbar">
-        <input id="class-search-input" type="search" value="${escapeHtml(state.classSearchTerm)}" placeholder="수업명, 학교, 과목 검색">
-        <select id="class-status-filter" aria-label="수업 상태 필터">
-          <option value="all" ${state.classStatusFilter === "all" ? "selected" : ""}>전체 상태</option>
-          ${Object.entries(CLASS_STATUS_LABELS)
-            .map(([value, label]) => `<option value="${value}" ${state.classStatusFilter === value ? "selected" : ""}>${label}</option>`)
-            .join("")}
-        </select>
-      </div>
+      ${renderSummaryItems([
+        { label: "전체 수업", value: `${state.classes.length}개` },
+        { label: "운영중", value: `${activeClassCount}개` },
+        { label: "준비중", value: `${readyClassCount}개` },
+        { label: "등록 학생", value: `${totalActiveStudents}명` }
+      ])}
+      ${classToolbar}
       <div class="empty-state">검색 조건에 맞는 수업이 없습니다.</div>
     `;
     elements.classDetail.innerHTML = '<div class="empty-state">목록에서 수업을 선택하면 상세 정보가 표시됩니다.</div>';
@@ -590,15 +718,13 @@ function renderClassList() {
   }
 
   elements.classList.innerHTML = `
-    <div class="list-toolbar">
-      <input id="class-search-input" type="search" value="${escapeHtml(state.classSearchTerm)}" placeholder="수업명, 학교, 과목 검색">
-      <select id="class-status-filter" aria-label="수업 상태 필터">
-        <option value="all" ${state.classStatusFilter === "all" ? "selected" : ""}>전체 상태</option>
-        ${Object.entries(CLASS_STATUS_LABELS)
-          .map(([value, label]) => `<option value="${value}" ${state.classStatusFilter === value ? "selected" : ""}>${label}</option>`)
-          .join("")}
-      </select>
-    </div>
+    ${renderSummaryItems([
+      { label: "전체 수업", value: `${state.classes.length}개` },
+      { label: "운영중", value: `${activeClassCount}개` },
+      { label: "준비중", value: `${readyClassCount}개` },
+      { label: "등록 학생", value: `${totalActiveStudents}명` }
+    ])}
+    ${classToolbar}
     <div class="table-list">
       ${filteredClasses
         .map((classItem) => {
@@ -606,20 +732,33 @@ function renderClassList() {
           const sessionCount = getVisibleClassSessionCount(classItem.classId);
 
           return `
-            <button class="table-row ${classItem.classId === state.selectedClassId ? "is-selected" : ""}" type="button" data-class-id="${classItem.classId}">
+            <button class="table-row table-row-class ${classItem.classId === state.selectedClassId ? "is-selected" : ""}" type="button" data-class-id="${classItem.classId}">
               <div>
                 <strong>${escapeHtml(classItem.classTitle)}</strong>
-                <span>${escapeHtml(classItem.targetSchool)} ${escapeHtml(classItem.targetGrade)} - ${escapeHtml(classItem.subject)}</span>
+                <span>${escapeHtml(classItem.targetSchool)} ${escapeHtml(classItem.targetGrade)}</span>
               </div>
               <div>
-                <strong>회차 ${sessionCount}개</strong>
-                <span>수강중 ${enrollmentStats.active}명</span>
+                <strong>${escapeHtml(classItem.subject)}</strong>
+                <span>과목</span>
               </div>
               <div>
-                <strong>${escapeHtml(classItem.accessCode)}</strong>
-                <span>수업 코드</span>
+                <strong>${enrollmentStats.active}명</strong>
+                <span>학생 수</span>
               </div>
-              <span class="${getStatusClass(classItem.status)}">${CLASS_STATUS_LABELS[classItem.status]}</span>
+              <div>
+                <strong>${sessionCount}개</strong>
+                <span>회차 수</span>
+              </div>
+              <div>
+                <span class="${getStatusClass(classItem.status)}">${CLASS_STATUS_LABELS[classItem.status]}</span>
+              </div>
+              <div>
+                <strong>${formatDate(classItem.updatedAt)}</strong>
+                <span>최근 수정일</span>
+              </div>
+              <div>
+                <strong>상세</strong>
+              </div>
             </button>
           `;
         })
@@ -635,6 +774,7 @@ function renderClassList() {
 function bindClassListControls() {
   const searchInput = document.querySelector("#class-search-input");
   const statusFilter = document.querySelector("#class-status-filter");
+  const sortSelect = document.querySelector("#class-sort-select");
 
   if (searchInput) {
     searchInput.addEventListener("input", () => {
@@ -646,6 +786,13 @@ function bindClassListControls() {
   if (statusFilter) {
     statusFilter.addEventListener("change", () => {
       state.classStatusFilter = statusFilter.value;
+      renderClassList();
+    });
+  }
+
+  if (sortSelect) {
+    sortSelect.addEventListener("change", () => {
+      state.classSortKey = sortSelect.value;
       renderClassList();
     });
   }
@@ -693,6 +840,7 @@ function renderClassDetail() {
       ${renderClassTabs(activeTab)}
       ${activeTab === "students" ? renderClassStudentsTab(classItem.classId, enrollmentStats) : ""}
       ${activeTab === "sessions" ? renderSessionManagement(classItem.classId) : ""}
+      ${activeTab === "materials" ? renderFutureMaterialsTab() : ""}
       ${activeTab === "info" ? renderClassInfoTab(classItem, enrollmentStats, sessionCount) : ""}
     </div>
   `;
@@ -706,7 +854,8 @@ function renderClassTabs(activeTab) {
   const tabs = [
     ["info", "기본 정보"],
     ["students", "학생 관리"],
-    ["sessions", "회차 관리"]
+    ["sessions", "회차 관리"],
+    ["materials", "자료 관리 예정"]
   ];
 
   return `
@@ -714,6 +863,16 @@ function renderClassTabs(activeTab) {
       ${tabs
         .map(([value, label]) => `<button class="tab-button ${activeTab === value ? "is-active" : ""}" type="button" data-class-tab="${value}">${label}</button>`)
         .join("")}
+    </div>
+  `;
+}
+
+function renderFutureMaterialsTab() {
+  return `
+    <div class="detail-section">
+      <div class="question-placeholder">
+        자료/교재 관리와 문항 관리는 다음 단계에서 추가됩니다. 현재 작업에서는 구조 방향만 기록합니다.
+      </div>
     </div>
   `;
 }
@@ -815,6 +974,28 @@ function bindClassDetailControls(classId) {
 
 function renderSessionManagement(classId) {
   const sessionCount = getVisibleClassSessionCount(classId);
+  const sessions = getFilteredClassSessions(classId);
+  const videoCount = state.sessions.filter((session) => session.classId === classId && session.lessonVideoUrl).length;
+  const publicCount = state.sessions.filter((session) => session.classId === classId && session.status === "public").length;
+  const sessionToolbar = renderToolbar({
+    searchId: "session-search-input",
+    searchValue: state.sessionSearchTerm,
+    searchPlaceholder: "회차명, 날짜, 요약 검색",
+    filterId: "session-status-filter",
+    filterValue: state.sessionStatusFilter,
+    filterLabel: "회차 상태 필터",
+    filterOptions: [
+      { value: "all", label: "전체 상태" },
+      ...Object.entries(SESSION_STATUS_LABELS).map(([value, label]) => ({ value, label }))
+    ],
+    sortId: "session-sort-select",
+    sortValue: state.sessionSortKey,
+    sortOptions: [
+      { value: "date-desc", label: "최신 날짜순" },
+      { value: "updated-desc", label: "최근 수정순" },
+      { value: "title-asc", label: "회차명순" }
+    ]
+  });
 
   return `
     <div class="session-section">
@@ -828,7 +1009,14 @@ function renderSessionManagement(classId) {
       </div>
 
       ${state.sessionNotice ? `<div class="form-info">${escapeHtml(state.sessionNotice)}</div>` : ""}
-      ${renderSessionList(classId)}
+      ${renderSummaryItems([
+        { label: "표시 회차", value: `${sessions.length}개` },
+        { label: "숨김 제외", value: `${sessionCount}개` },
+        { label: "영상 등록", value: `${videoCount}개` },
+        { label: "공개", value: `${publicCount}개` }
+      ])}
+      ${sessionToolbar}
+      ${renderSessionList(classId, sessions)}
       ${renderSessionDetail(classId)}
     </div>
   `;
@@ -895,15 +1083,13 @@ function renderSessionForm(classId) {
   `;
 }
 
-function renderSessionList(classId) {
-  const sessions = getClassSessions(classId);
-
+function renderSessionList(classId, sessions = getFilteredClassSessions(classId)) {
   if (!sessions.length) {
-    return '<div class="empty-state">아직 이 수업에 등록된 회차가 없습니다. 회차 추가 버튼으로 첫 회차를 등록하세요.</div>';
+    return '<div class="empty-state">조건에 맞는 회차가 없습니다. 회차 추가 버튼으로 회차를 등록하세요.</div>';
   }
 
   return `
-    <div class="session-list">
+    <div class="table-list session-table">
       ${sessions
         .map((session) => {
           const isSelected = session.sessionId === state.selectedSessionId;
@@ -911,23 +1097,34 @@ function renderSessionList(classId) {
           const statusLabel = SESSION_STATUS_LABELS[session.status] || session.status;
 
           return `
-            <article class="session-card ${isSelected ? "is-selected" : ""}">
-              <h4>${escapeHtml(session.sessionTitle)}</h4>
-              <p class="session-meta">${formatSessionDate(session.sessionDate)}</p>
-              <p class="session-summary-preview">${escapeHtml(truncateSummary(session.summary))}</p>
-              <div class="session-meta-list">
+            <div class="table-row table-row-session ${isSelected ? "is-selected" : ""}">
+              <div>
+                <strong>${escapeHtml(session.sessionTitle)}</strong>
+                <span>${escapeHtml(truncateSummary(session.summary, 36))}</span>
+              </div>
+              <div>
+                <strong>${formatSessionDate(session.sessionDate)}</strong>
+                <span>날짜</span>
+              </div>
+              <div>
                 <span class="video-state">${videoState}</span>
+              </div>
+              <div>
+                <strong>준비중</strong>
+                <span>자료 수</span>
+              </div>
+              <div>
                 <span class="question-state">문항 준비중</span>
+              </div>
+              <div>
                 <span class="${getStatusClass(session.status)}">${escapeHtml(statusLabel)}</span>
               </div>
-              <div class="session-card-footer">
-                <span class="session-meta">문항 수 0개</span>
-                <div class="session-actions">
-                  <button class="text-button" type="button" data-session-detail-id="${session.sessionId}">상세</button>
-                  <button class="text-button" type="button" data-session-edit-id="${session.sessionId}">수정</button>
-                </div>
+              <div class="table-actions">
+                <button class="text-button" type="button" data-session-detail-id="${session.sessionId}">상세</button>
+                <button class="text-button" type="button" data-session-edit-id="${session.sessionId}">수정</button>
+                <button class="danger-button" type="button" data-delete-session-id="${session.sessionId}">삭제</button>
               </div>
-            </article>
+            </div>
           `;
         })
         .join("")}
@@ -1109,25 +1306,54 @@ function renderClassEnrollmentList(classId) {
 function renderStudentList() {
   const filteredStudents = getFilteredStudents();
   elements.studentCountLabel.textContent = `${filteredStudents.length}/${state.students.length}명`;
+  const activeStudentCount = state.students.filter((student) => student.status === "active").length;
+  const pausedStudentCount = state.students.filter((student) => student.status === "paused").length;
+  const totalEnrollments = state.enrollments.filter((enrollment) => enrollment.status !== "ended").length;
+  const studentToolbar = renderToolbar({
+    searchId: "student-search-input",
+    searchValue: state.studentSearchTerm,
+    searchPlaceholder: "이름, 학교, 전화번호 검색",
+    filterId: "student-status-filter",
+    filterValue: state.studentStatusFilter,
+    filterLabel: "학생 상태 필터",
+    filterOptions: [
+      { value: "all", label: "전체 상태" },
+      ...Object.entries(STUDENT_STATUS_LABELS).map(([value, label]) => ({ value, label }))
+    ],
+    sortId: "student-sort-select",
+    sortValue: state.studentSortKey,
+    sortOptions: [
+      { value: "updated-desc", label: "최근 수정순" },
+      { value: "name-asc", label: "이름순" },
+      { value: "class-desc", label: "수강 수업 많은순" }
+    ]
+  });
 
   if (!state.students.length) {
-    elements.studentList.innerHTML = '<div class="empty-state">아직 등록된 학생이 없습니다. 학생 등록 버튼을 눌러 첫 학생을 추가하세요.</div>';
+    elements.studentList.innerHTML = `
+      ${renderSummaryItems([
+        { label: "전체 학생", value: "0명" },
+        { label: "수강중", value: "0명" },
+        { label: "수강 배정", value: "0개" }
+      ])}
+      ${studentToolbar}
+      <div class="empty-state">아직 등록된 학생이 없습니다. 학생 등록 버튼을 눌러 첫 학생을 추가하세요.</div>
+    `;
     elements.studentDetail.innerHTML = '<div class="empty-state">학생을 선택하면 상세 정보가 표시됩니다.</div>';
+    bindStudentListControls();
     return;
   }
 
   if (!filteredStudents.length) {
     state.selectedStudentId = null;
     elements.studentList.innerHTML = `
-      <div class="list-toolbar">
-        <input id="student-search-input" type="search" value="${escapeHtml(state.studentSearchTerm)}" placeholder="이름, 학교, 전화번호 검색">
-        <select id="student-status-filter" aria-label="학생 상태 필터">
-          <option value="all" ${state.studentStatusFilter === "all" ? "selected" : ""}>전체 상태</option>
-          ${Object.entries(STUDENT_STATUS_LABELS)
-            .map(([value, label]) => `<option value="${value}" ${state.studentStatusFilter === value ? "selected" : ""}>${label}</option>`)
-            .join("")}
-        </select>
-      </div>
+      ${renderSummaryItems([
+        { label: "전체 학생", value: `${state.students.length}명` },
+        { label: "수강중", value: `${activeStudentCount}명` },
+        { label: "일시중지", value: `${pausedStudentCount}명` },
+        { label: "수강 배정", value: `${totalEnrollments}개` }
+      ])}
+      ${studentToolbar}
       <div class="empty-state">검색 조건에 맞는 학생이 없습니다.</div>
     `;
     elements.studentDetail.innerHTML = '<div class="empty-state">목록에서 학생을 선택하면 상세 정보가 표시됩니다.</div>';
@@ -1140,25 +1366,31 @@ function renderStudentList() {
   }
 
   elements.studentList.innerHTML = `
-    <div class="list-toolbar">
-      <input id="student-search-input" type="search" value="${escapeHtml(state.studentSearchTerm)}" placeholder="이름, 학교, 전화번호 검색">
-      <select id="student-status-filter" aria-label="학생 상태 필터">
-        <option value="all" ${state.studentStatusFilter === "all" ? "selected" : ""}>전체 상태</option>
-        ${Object.entries(STUDENT_STATUS_LABELS)
-          .map(([value, label]) => `<option value="${value}" ${state.studentStatusFilter === value ? "selected" : ""}>${label}</option>`)
-          .join("")}
-      </select>
-    </div>
+    ${renderSummaryItems([
+      { label: "전체 학생", value: `${state.students.length}명` },
+      { label: "수강중", value: `${activeStudentCount}명` },
+      { label: "일시중지", value: `${pausedStudentCount}명` },
+      { label: "수강 배정", value: `${totalEnrollments}개` }
+    ])}
+    ${studentToolbar}
     <div class="table-list">
       ${filteredStudents
         .map((student) => {
           const enrollments = getStudentEnrollments(student.studentId);
 
           return `
-            <button class="table-row ${student.studentId === state.selectedStudentId ? "is-selected" : ""}" type="button" data-student-id="${student.studentId}">
+            <button class="table-row table-row-student ${student.studentId === state.selectedStudentId ? "is-selected" : ""}" type="button" data-student-id="${student.studentId}">
               <div>
                 <strong>${escapeHtml(student.studentName)}</strong>
-                <span>${escapeHtml(student.school)} ${escapeHtml(student.grade)}</span>
+                <span>이름</span>
+              </div>
+              <div>
+                <strong>${escapeHtml(student.school)}</strong>
+                <span>학교</span>
+              </div>
+              <div>
+                <strong>${escapeHtml(student.grade)}</strong>
+                <span>학년</span>
               </div>
               <div>
                 <strong>${escapeHtml(formatPhone(student.phone))}</strong>
@@ -1168,7 +1400,12 @@ function renderStudentList() {
                 <strong>${enrollments.length}개</strong>
                 <span>수강 수업</span>
               </div>
-              <span class="${getStatusClass(student.status)}">${STUDENT_STATUS_LABELS[student.status]}</span>
+              <div>
+                <span class="${getStatusClass(student.status)}">${STUDENT_STATUS_LABELS[student.status]}</span>
+              </div>
+              <div>
+                <strong>상세</strong>
+              </div>
             </button>
           `;
         })
@@ -1184,6 +1421,7 @@ function renderStudentList() {
 function bindStudentListControls() {
   const searchInput = document.querySelector("#student-search-input");
   const statusFilter = document.querySelector("#student-status-filter");
+  const sortSelect = document.querySelector("#student-sort-select");
 
   if (searchInput) {
     searchInput.addEventListener("input", () => {
@@ -1195,6 +1433,13 @@ function bindStudentListControls() {
   if (statusFilter) {
     statusFilter.addEventListener("change", () => {
       state.studentStatusFilter = statusFilter.value;
+      renderStudentList();
+    });
+  }
+
+  if (sortSelect) {
+    sortSelect.addEventListener("change", () => {
+      state.studentSortKey = sortSelect.value;
       renderStudentList();
     });
   }
@@ -2022,6 +2267,31 @@ function bindEnrollmentControls() {
 
 function bindSessionControls() {
   const showSessionFormButton = document.querySelector("#show-session-form");
+  const searchInput = document.querySelector("#session-search-input");
+  const statusFilter = document.querySelector("#session-status-filter");
+  const sortSelect = document.querySelector("#session-sort-select");
+
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      state.sessionSearchTerm = searchInput.value;
+      renderClassDetail();
+    });
+  }
+
+  if (statusFilter) {
+    statusFilter.addEventListener("change", () => {
+      state.sessionStatusFilter = statusFilter.value;
+      renderClassDetail();
+    });
+  }
+
+  if (sortSelect) {
+    sortSelect.addEventListener("change", () => {
+      state.sessionSortKey = sortSelect.value;
+      renderClassDetail();
+    });
+  }
+
   if (showSessionFormButton) {
     showSessionFormButton.addEventListener("click", () => {
       showCreateSessionForm(state.selectedClassId);

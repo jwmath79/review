@@ -267,6 +267,36 @@ h3 {
   margin-top: 16px;
 }
 
+.summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.summary-item {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdfb;
+}
+
+.summary-item span,
+.summary-item strong {
+  display: block;
+}
+
+.summary-item span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.summary-item strong {
+  margin-top: 6px;
+  font-size: 18px;
+}
+
 .recent-item,
 .empty-state {
   padding: 14px;
@@ -394,7 +424,7 @@ textarea {
 
 .class-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 0.55fr);
   gap: 18px;
   align-items: start;
 }
@@ -414,6 +444,14 @@ textarea {
 .list-toolbar input,
 .list-toolbar select {
   min-width: 0;
+}
+
+.list-toolbar input {
+  flex: 1 1 280px;
+}
+
+.list-toolbar select {
+  flex: 0 0 160px;
 }
 
 .table-list {
@@ -452,6 +490,31 @@ textarea {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.35;
+}
+
+.table-row-class {
+  grid-template-columns: minmax(180px, 1.8fr) minmax(100px, 0.8fr) minmax(88px, 0.6fr) minmax(88px, 0.6fr) minmax(88px, 0.6fr) minmax(140px, 1fr) 56px;
+}
+
+.table-row-student {
+  grid-template-columns: minmax(120px, 1fr) minmax(100px, 0.8fr) minmax(70px, 0.5fr) minmax(120px, 0.9fr) minmax(92px, 0.6fr) minmax(88px, 0.6fr) 56px;
+}
+
+.table-row-session {
+  grid-template-columns: minmax(160px, 1.5fr) minmax(92px, 0.7fr) minmax(100px, 0.7fr) minmax(82px, 0.6fr) minmax(98px, 0.7fr) minmax(88px, 0.6fr) auto;
+}
+
+.table-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.table-actions .text-button,
+.table-actions .danger-button {
+  min-height: 34px;
+  padding: 0 10px;
 }
 
 .class-card,
@@ -862,7 +925,8 @@ textarea {
 @media (max-width: 920px) {
   .admin-shell,
   .class-layout,
-  .stat-grid {
+  .stat-grid,
+  .summary-strip {
     grid-template-columns: 1fr;
   }
 
@@ -912,8 +976,15 @@ textarea {
     flex-direction: column;
   }
 
+  .list-toolbar input,
+  .list-toolbar select {
+    flex-basis: auto;
+    width: 100%;
+  }
+
   .enrollment-actions,
-  .session-actions {
+  .session-actions,
+  .table-actions {
     justify-content: stretch;
   }
 
