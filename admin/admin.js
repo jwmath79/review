@@ -738,10 +738,6 @@ function renderClassList() {
                 <span>${escapeHtml(classItem.targetSchool)} ${escapeHtml(classItem.targetGrade)}</span>
               </div>
               <div>
-                <strong>${escapeHtml(classItem.subject)}</strong>
-                <span>과목</span>
-              </div>
-              <div>
                 <strong>${enrollmentStats.active}명</strong>
                 <span>학생 수</span>
               </div>
@@ -751,13 +747,6 @@ function renderClassList() {
               </div>
               <div>
                 <span class="${getStatusClass(classItem.status)}">${CLASS_STATUS_LABELS[classItem.status]}</span>
-              </div>
-              <div>
-                <strong>${formatDate(classItem.updatedAt)}</strong>
-                <span>최근 수정일</span>
-              </div>
-              <div>
-                <strong>상세</strong>
               </div>
             </button>
           `;
@@ -880,6 +869,14 @@ function renderFutureMaterialsTab() {
 function renderClassInfoTab(classItem, enrollmentStats, sessionCount) {
   return `
     <div class="detail-section">
+      <div class="detail-row">
+        <span>과목</span>
+        <strong>${escapeHtml(classItem.subject)}</strong>
+      </div>
+      <div class="detail-row">
+        <span>대상</span>
+        <strong>${escapeHtml(classItem.targetSchool)} ${escapeHtml(classItem.targetGrade)}</strong>
+      </div>
       <div class="detail-row">
         <span>관리용 ID</span>
         <strong>${escapeHtml(classItem.classId)}</strong>

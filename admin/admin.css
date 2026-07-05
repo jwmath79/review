@@ -429,6 +429,20 @@ textarea {
   align-items: start;
 }
 
+#classes-view .class-layout {
+  grid-template-columns: minmax(280px, 0.48fr) minmax(0, 1.52fr);
+  gap: 20px;
+}
+
+#classes-view .detail-panel {
+  min-width: 0;
+  padding: 24px;
+}
+
+#classes-view .summary-strip {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .class-list,
 .student-list {
   display: grid;
@@ -438,6 +452,7 @@ textarea {
 
 .list-toolbar {
   align-items: stretch;
+  flex-wrap: wrap;
   margin-top: 16px;
 }
 
@@ -452,6 +467,14 @@ textarea {
 
 .list-toolbar select {
   flex: 0 0 160px;
+}
+
+#classes-view .list-toolbar input {
+  flex-basis: 100%;
+}
+
+#classes-view .list-toolbar select {
+  flex: 1 1 120px;
 }
 
 .table-list {
@@ -496,12 +519,36 @@ textarea {
   grid-template-columns: minmax(180px, 1.8fr) minmax(100px, 0.8fr) minmax(88px, 0.6fr) minmax(88px, 0.6fr) minmax(88px, 0.6fr) minmax(140px, 1fr) 56px;
 }
 
+#classes-view .table-row-class {
+  grid-template-columns: minmax(0, 1fr) minmax(58px, 0.34fr) minmax(58px, 0.34fr) minmax(76px, auto);
+  gap: 8px;
+  padding: 11px 12px;
+}
+
+#classes-view .table-row-class strong {
+  font-size: 15px;
+}
+
+#classes-view .table-row-class span {
+  font-size: 12px;
+}
+
 .table-row-student {
   grid-template-columns: minmax(120px, 1fr) minmax(100px, 0.8fr) minmax(70px, 0.5fr) minmax(120px, 0.9fr) minmax(92px, 0.6fr) minmax(88px, 0.6fr) 56px;
 }
 
 .table-row-session {
   grid-template-columns: minmax(160px, 1.5fr) minmax(92px, 0.7fr) minmax(100px, 0.7fr) minmax(82px, 0.6fr) minmax(98px, 0.7fr) minmax(88px, 0.6fr) auto;
+}
+
+#classes-view .session-table {
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+#classes-view .table-row-session {
+  grid-template-columns: minmax(220px, 1.8fr) minmax(98px, 0.7fr) minmax(110px, 0.7fr) minmax(86px, 0.55fr) minmax(108px, 0.7fr) minmax(88px, 0.55fr) minmax(170px, auto);
+  min-width: 860px;
 }
 
 .table-actions {
@@ -697,7 +744,11 @@ textarea {
 
 .detail-content {
   display: grid;
-  gap: 14px;
+  gap: 16px;
+}
+
+#classes-view .detail-content {
+  gap: 18px;
 }
 
 .tab-list {
@@ -743,7 +794,7 @@ textarea {
 
 .session-section {
   display: grid;
-  gap: 12px;
+  gap: 14px;
   padding-top: 14px;
   border-top: 1px solid var(--line);
 }
@@ -930,6 +981,11 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  #classes-view .class-layout,
+  #classes-view .summary-strip {
+    grid-template-columns: 1fr;
+  }
+
   .sidebar {
     position: static;
     border-right: 0;
@@ -942,6 +998,10 @@ textarea {
 
   .detail-panel {
     position: static;
+  }
+
+  #classes-view .detail-panel {
+    padding: 20px;
   }
 }
 
@@ -970,6 +1030,12 @@ textarea {
   .session-card-footer,
   .table-row {
     grid-template-columns: 1fr;
+  }
+
+  #classes-view .table-row-class,
+  #classes-view .table-row-session {
+    grid-template-columns: 1fr;
+    min-width: 0;
   }
 
   .list-toolbar {
