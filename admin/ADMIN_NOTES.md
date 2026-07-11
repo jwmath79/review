@@ -24,6 +24,12 @@
   - 수업 상세의 자료/교재 관리 탭에서 자료 목록 확인, 등록, 수정, 숨김 처리 가능
   - 자료는 회차 연결 없이도 등록 가능
   - 현재는 localStorage 기반이며 실제 파일 업로드는 연결하지 않음
+- 6차: 자료 파일 연결 구조 준비
+  - 자료 상세에서 fileRefs, imageRefs 참조 목록 확인, 추가, 수정, 숨김 처리 가능
+  - fileRefs는 PDF, 원본 파일, 기타 첨부 파일 참조용으로 사용
+  - imageRefs는 페이지 이미지, 문항 이미지, 손풀이 이미지, 기타 이미지 참조용으로 사용
+  - questionRefs는 실제 문항 관리 단계 전까지 개수와 안내만 표시
+  - 새 localStorage 키 없이 `jmAdminMaterials.v1` 안의 각 material 객체 하위 배열에 저장
 
 ## 아직 만들지 않은 기능
 - 문항 관리
@@ -54,6 +60,10 @@
 - Materials 기본 필드: materialId, classId, sessionId, materialTitle, materialType, usage, subject, grade, unit, tags, status, sourceType, fileRefs, imageRefs, questionRefs, questionCount, memo, createdAt, updatedAt.
 - 자료 상태값은 사용중, 준비중, 보관, 숨김을 사용한다. 학생 공개 여부는 학생 로그인 기능 단계에서 별도 visibility 또는 studentVisible 필드로 검토한다.
 - 이번 5차에서는 PDF 업로드, 이미지 업로드, 자동 문항 분할, 실제 문항 관리는 구현하지 않는다.
+- 6차 fileRefs 기본 필드: fileRefId, fileName, fileKind, linkMode, status, memo, createdAt, updatedAt.
+- 6차 imageRefs 기본 필드: imageRefId, imageName, imageKind, pageNumber, sortOrder, status, memo, createdAt, updatedAt.
+- 파일/이미지 참조 상태값은 사용중, 준비중, 보관, 숨김을 사용한다. 숨김 참조는 기본 목록에서 제외하고, 필요하면 이후 숨김 보기 옵션을 추가한다.
+- 이번 6차에서는 실제 PDF 업로드, 이미지 업로드, 파일 저장, 문항 연결 구현은 하지 않는다.
 
 ## 주의
 - class.html, session.html, style.css, config.js, jm-admin-7979.html은 건드리지 않는다.

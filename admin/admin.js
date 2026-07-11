@@ -48,6 +48,15 @@ const MATERIAL_SOURCE_LABELS = {
   pdf_crop: "PDF 분할 예정"
 };
 
+const FILE_REF_KIND_OPTIONS = ["PDF", "원본 파일", "기타"];
+
+const FILE_REF_LINK_MODE_LABELS = {
+  manual: "수동 등록",
+  upload_pending: "향후 업로드 예정"
+};
+
+const IMAGE_REF_KIND_OPTIONS = ["페이지 이미지", "문항 이미지", "손풀이 이미지", "기타"];
+
 const starterClasses = [
   {
     classId: "class-dongin7979",
@@ -400,6 +409,30 @@ function createMaterialId(classId) {
   return candidate;
 }
 
+function createFileRefId(materialId) {
+  let candidate = `file-ref-${materialId}-${Date.now()}`;
+  let index = 2;
+
+  while (state.materials.some((material) => getMaterialFileRefs(material).some((fileRef) => fileRef.fileRefId === candidate))) {
+    candidate = `file-ref-${materialId}-${Date.now()}-${index}`;
+    index += 1;
+  }
+
+  return candidate;
+}
+
+function createImageRefId(materialId) {
+  let candidate = `image-ref-${materialId}-${Date.now()}`;
+  let index = 2;
+
+  while (state.materials.some((material) => getMaterialImageRefs(material).some((imageRef) => imageRef.imageRefId === candidate))) {
+    candidate = `image-ref-${materialId}-${Date.now()}-${index}`;
+    index += 1;
+  }
+
+  return candidate;
+}
+
 function getStatusClass(status) {
   return `status-badge status-${status}`;
 }
@@ -474,6 +507,50 @@ function getSessionById(sessionId) {
 
 function getMaterialById(materialId) {
   return state.materials.find((material) => material.materialId === materialId);
+}
+
+function getMaterialFileRefs(material) {
+  return Array.isArray(material?.fileRefs) ? material.fileRefs : [];
+}
+
+function getMaterialImageRefs(material) {
+  return Array.isArray(material?.imageRefs) ? material.imageRefs : [];
+}
+
+function getMaterialQuestionRefs(material) {
+  return Array.isArray(material?.questionRefs) ? material.questionRefs : [];
+}
+
+function getVisibleFileRefs(material) {
+  return getMaterialFileRefs(material)
+    .filter((fileRef) => fileRef.status !== "hidden")
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+}
+
+function getVisibleImageRefs(material) {
+  return getMaterialImageRefs(material)
+    .filter((imageRef) => imageRef.status !== "hidden")
+    .sort((a, b) => {
+      const orderDiff = Number(a.sortOrder || 0) - Number(b.sortOrder || 0);
+      if (orderDiff !== 0) {
+        return orderDiff;
+      }
+
+      const pageDiff = Number(a.pageNumber || 0) - Number(b.pageNumber || 0);
+      if (pageDiff !== 0) {
+        return pageDiff;
+      }
+
+      return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0);
+    });
+}
+
+function getFileRefById(material, fileRefId) {
+  return getMaterialFileRefs(material).find((fileRef) => fileRef.fileRefId === fileRefId);
+}
+
+function getImageRefById(material, imageRefId) {
+  return getMaterialImageRefs(material).find((imageRef) => imageRef.imageRefId === imageRefId);
 }
 
 function getClassMaterials(classId) {
@@ -1108,9 +1185,9 @@ function renderMaterialDetail(classId) {
   }
 
   const statusLabel = MATERIAL_STATUS_LABELS[material.status] || material.status;
-  const fileCount = Array.isArray(material.fileRefs) ? material.fileRefs.length : 0;
-  const imageCount = Array.isArray(material.imageRefs) ? material.imageRefs.length : 0;
-  const questionRefCount = Array.isArray(material.questionRefs) ? material.questionRefs.length : 0;
+  const fileRefs = getVisibleFileRefs(material);
+  const imageRefs = getVisibleImageRefs(material);
+  const questionRefs = getMaterialQuestionRefs(material);
 
   return `
     <article class="material-detail">
@@ -1160,28 +1237,163 @@ function renderMaterialDetail(classId) {
 
       <div class="material-link-summary">
         <div>
-          <strong>${fileCount}개</strong>
-          <span>파일 연결 예정</span>
+          <strong>${fileRefs.length}개</strong>
+          <span>파일 참조</span>
         </div>
         <div>
-          <strong>${imageCount}개</strong>
-          <span>이미지 연결 예정</span>
+          <strong>${imageRefs.length}개</strong>
+          <span>이미지 참조</span>
         </div>
         <div>
-          <strong>${questionRefCount}개</strong>
+          <strong>${questionRefs.length}개</strong>
           <span>문항 연결 예정</span>
         </div>
       </div>
 
-      <div class="question-placeholder">
-        PDF 업로드, 이미지 업로드, 문항 분할/연결은 다음 단계에서 추가됩니다. 현재는 연결 필드만 준비합니다.
-      </div>
+      ${renderMaterialFileRefs(material, fileRefs)}
+      ${renderMaterialImageRefs(material, imageRefs)}
+      ${renderMaterialQuestionRefsNotice(questionRefs)}
 
       <div class="detail-actions">
         <button class="secondary-button" type="button" data-material-edit-id="${material.materialId}">자료 수정</button>
         ${material.status !== "hidden" ? `<button class="danger-button" type="button" data-hide-material-id="${material.materialId}">자료 숨김 처리</button>` : ""}
       </div>
     </article>
+  `;
+}
+
+function renderMaterialFileRefs(material, fileRefs = getVisibleFileRefs(material)) {
+  return `
+    <section class="material-ref-section">
+      <div class="panel-title material-ref-title">
+        <div>
+          <h4>연결 파일</h4>
+          <p>PDF, 원본 파일, 기타 첨부 파일 참조를 자료 안에 기록합니다.</p>
+        </div>
+        <button class="secondary-button" type="button" data-create-file-ref-id="${material.materialId}">파일 참조 추가</button>
+      </div>
+
+      <div class="form-info">
+        실제 업로드 기능은 아직 연결하지 않았습니다. 파일명과 종류를 수동으로 등록해 향후 업로드/서버 저장 구조와 이어갈 준비만 합니다.
+      </div>
+
+      ${
+        fileRefs.length
+          ? `<div class="table-list material-ref-table">
+              ${fileRefs
+                .map((fileRef) => {
+                  const statusLabel = MATERIAL_STATUS_LABELS[fileRef.status] || fileRef.status || "준비중";
+                  const linkModeLabel = FILE_REF_LINK_MODE_LABELS[fileRef.linkMode] || fileRef.linkMode || "수동 등록";
+
+                  return `
+                    <div class="table-row table-row-material-ref table-row-file-ref">
+                      <div>
+                        <strong>${escapeHtml(fileRef.fileName || "이름 없는 파일")}</strong>
+                        <span>${escapeHtml(fileRef.memo ? truncateSummary(fileRef.memo, 36) : "메모 없음")}</span>
+                      </div>
+                      <div>
+                        <strong>${escapeHtml(fileRef.fileKind || "기타")}</strong>
+                        <span>파일 종류</span>
+                      </div>
+                      <div>
+                        <strong>${escapeHtml(linkModeLabel)}</strong>
+                        <span>연결 방식</span>
+                      </div>
+                      <div>
+                        <strong>${formatDate(fileRef.createdAt)}</strong>
+                        <span>등록일</span>
+                      </div>
+                      <div>
+                        <span class="${getStatusClass(fileRef.status || "ready")}">${escapeHtml(statusLabel)}</span>
+                      </div>
+                      <div class="table-actions">
+                        <button class="text-button" type="button" data-material-id="${material.materialId}" data-file-ref-edit-id="${fileRef.fileRefId}">수정</button>
+                        ${fileRef.status !== "hidden" ? `<button class="danger-button" type="button" data-material-id="${material.materialId}" data-hide-file-ref-id="${fileRef.fileRefId}">숨김</button>` : ""}
+                      </div>
+                    </div>
+                  `;
+                })
+                .join("")}
+            </div>`
+          : '<div class="empty-state material-ref-empty">표시할 파일 참조가 없습니다. 파일 참조 추가로 PDF나 원본 파일 정보를 기록하세요.</div>'
+      }
+    </section>
+  `;
+}
+
+function renderMaterialImageRefs(material, imageRefs = getVisibleImageRefs(material)) {
+  return `
+    <section class="material-ref-section">
+      <div class="panel-title material-ref-title">
+        <div>
+          <h4>이미지 참조</h4>
+          <p>PDF 분할 이미지, 문항 이미지, 손풀이 이미지 같은 개별 이미지 연결 준비 영역입니다.</p>
+        </div>
+        <button class="secondary-button" type="button" data-create-image-ref-id="${material.materialId}">이미지 참조 추가</button>
+      </div>
+
+      <div class="form-info">
+        이미지 파일 업로드는 아직 만들지 않습니다. 이미지명, 종류, 페이지/순서만 수동 기록해 다음 문항 관리 단계와 이어갈 수 있게 합니다.
+      </div>
+
+      ${
+        imageRefs.length
+          ? `<div class="table-list material-ref-table">
+              ${imageRefs
+                .map((imageRef) => {
+                  const statusLabel = MATERIAL_STATUS_LABELS[imageRef.status] || imageRef.status || "준비중";
+                  const pageLabel = imageRef.pageNumber ? `${Number(imageRef.pageNumber)}쪽` : "페이지 미지정";
+                  const orderLabel = imageRef.sortOrder ? `${Number(imageRef.sortOrder)}번` : "순서 미지정";
+
+                  return `
+                    <div class="table-row table-row-material-ref table-row-image-ref">
+                      <div>
+                        <strong>${escapeHtml(imageRef.imageName || "이름 없는 이미지")}</strong>
+                        <span>${escapeHtml(imageRef.memo ? truncateSummary(imageRef.memo, 36) : "메모 없음")}</span>
+                      </div>
+                      <div>
+                        <strong>${escapeHtml(imageRef.imageKind || "기타")}</strong>
+                        <span>이미지 종류</span>
+                      </div>
+                      <div>
+                        <strong>${escapeHtml(pageLabel)}</strong>
+                        <span>${escapeHtml(orderLabel)}</span>
+                      </div>
+                      <div>
+                        <strong>${formatDate(imageRef.createdAt)}</strong>
+                        <span>등록일</span>
+                      </div>
+                      <div>
+                        <span class="${getStatusClass(imageRef.status || "ready")}">${escapeHtml(statusLabel)}</span>
+                      </div>
+                      <div class="table-actions">
+                        <button class="text-button" type="button" data-material-id="${material.materialId}" data-image-ref-edit-id="${imageRef.imageRefId}">수정</button>
+                        ${imageRef.status !== "hidden" ? `<button class="danger-button" type="button" data-material-id="${material.materialId}" data-hide-image-ref-id="${imageRef.imageRefId}">숨김</button>` : ""}
+                      </div>
+                    </div>
+                  `;
+                })
+                .join("")}
+            </div>`
+          : '<div class="empty-state material-ref-empty">표시할 이미지 참조가 없습니다. 이미지 참조 추가로 페이지/문항/손풀이 이미지 정보를 준비하세요.</div>'
+      }
+    </section>
+  `;
+}
+
+function renderMaterialQuestionRefsNotice(questionRefs = []) {
+  return `
+    <section class="material-ref-section">
+      <div class="panel-title material-ref-title">
+        <div>
+          <h4>문항 연결</h4>
+          <p>현재 연결 예정 문항 ${questionRefs.length}개</p>
+        </div>
+      </div>
+      <div class="question-placeholder">
+        questionRefs는 실제 문항 관리 단계에서 사용합니다. 이번 단계에서는 개수와 연결 예정 안내만 표시합니다.
+      </div>
+    </section>
   `;
 }
 
@@ -2207,6 +2419,191 @@ function showEditMaterialForm(materialId) {
   });
 }
 
+function renderFileRefForm(materialId, fileRef = null) {
+  const values = fileRef || {
+    fileName: "",
+    fileKind: "PDF",
+    linkMode: "manual",
+    status: "ready",
+    memo: ""
+  };
+
+  return `
+    <form id="file-ref-form" class="modal-form material-ref-form" data-material-id="${escapeHtml(materialId)}">
+      <div class="form-grid">
+        <label>
+          <span>파일명</span>
+          <input name="fileName" type="text" value="${escapeHtml(values.fileName || "")}" placeholder="예: 다항식_복습프린트.pdf" required>
+        </label>
+
+        <label>
+          <span>파일 종류</span>
+          <select name="fileKind" required>
+            ${FILE_REF_KIND_OPTIONS.map((kind) => `<option value="${kind}" ${values.fileKind === kind ? "selected" : ""}>${kind}</option>`).join("")}
+          </select>
+        </label>
+
+        <label>
+          <span>연결 방식</span>
+          <select name="linkMode" required>
+            ${Object.entries(FILE_REF_LINK_MODE_LABELS)
+              .map(([value, label]) => `<option value="${value}" ${values.linkMode === value ? "selected" : ""}>${label}</option>`)
+              .join("")}
+          </select>
+        </label>
+
+        <label>
+          <span>상태</span>
+          <select name="status" required>
+            ${Object.entries(MATERIAL_STATUS_LABELS)
+              .map(([value, label]) => `<option value="${value}" ${values.status === value ? "selected" : ""}>${label}</option>`)
+              .join("")}
+          </select>
+        </label>
+      </div>
+
+      <label class="wide-field">
+        <span>메모</span>
+        <textarea name="memo" rows="3" placeholder="출처, 원본 위치, 추후 업로드 메모를 입력하세요.">${escapeHtml(values.memo || "")}</textarea>
+      </label>
+
+      <div class="form-info">
+        실제 파일은 저장하지 않습니다. 이번 단계에서는 PDF, 원본 파일, 기타 첨부 파일을 나중에 연결하기 위한 참조 정보만 기록합니다.
+      </div>
+
+      <div class="form-actions">
+        <button class="primary-button" type="submit">저장</button>
+        <button class="secondary-button" type="button" data-close-modal>취소</button>
+      </div>
+    </form>
+  `;
+}
+
+function renderImageRefForm(materialId, imageRef = null) {
+  const material = getMaterialById(materialId);
+  const values = imageRef || {
+    imageName: "",
+    imageKind: "페이지 이미지",
+    pageNumber: "",
+    sortOrder: getVisibleImageRefs(material).length + 1,
+    status: "ready",
+    memo: ""
+  };
+
+  return `
+    <form id="image-ref-form" class="modal-form material-ref-form" data-material-id="${escapeHtml(materialId)}">
+      <div class="form-grid">
+        <label>
+          <span>이미지명</span>
+          <input name="imageName" type="text" value="${escapeHtml(values.imageName || "")}" placeholder="예: 1쪽 전체 이미지, 3번 문항 이미지" required>
+        </label>
+
+        <label>
+          <span>이미지 종류</span>
+          <select name="imageKind" required>
+            ${IMAGE_REF_KIND_OPTIONS.map((kind) => `<option value="${kind}" ${values.imageKind === kind ? "selected" : ""}>${kind}</option>`).join("")}
+          </select>
+        </label>
+
+        <label>
+          <span>페이지 번호</span>
+          <input name="pageNumber" type="number" min="1" step="1" value="${values.pageNumber ? Number(values.pageNumber) : ""}" placeholder="선택">
+        </label>
+
+        <label>
+          <span>순서</span>
+          <input name="sortOrder" type="number" min="0" step="1" value="${values.sortOrder ? Number(values.sortOrder) : ""}" placeholder="선택">
+        </label>
+
+        <label>
+          <span>상태</span>
+          <select name="status" required>
+            ${Object.entries(MATERIAL_STATUS_LABELS)
+              .map(([value, label]) => `<option value="${value}" ${values.status === value ? "selected" : ""}>${label}</option>`)
+              .join("")}
+          </select>
+        </label>
+      </div>
+
+      <label class="wide-field">
+        <span>메모</span>
+        <textarea name="memo" rows="3" placeholder="PDF 분할, 문항 번호, 손풀이 연결 메모를 입력하세요.">${escapeHtml(values.memo || "")}</textarea>
+      </label>
+
+      <div class="form-info">
+        이미지 파일 업로드는 아직 연결하지 않습니다. 페이지 이미지, 문항 이미지, 손풀이 이미지 참조를 수동으로 준비하는 단계입니다.
+      </div>
+
+      <div class="form-actions">
+        <button class="primary-button" type="submit">저장</button>
+        <button class="secondary-button" type="button" data-close-modal>취소</button>
+      </div>
+    </form>
+  `;
+}
+
+function showCreateFileRefForm(materialId) {
+  const material = getMaterialById(materialId);
+  if (!material) {
+    return;
+  }
+
+  state.selectedMaterialId = material.materialId;
+  state.materialNotice = "";
+  openModal("파일 참조 추가", renderFileRefForm(materialId), (modal) => {
+    modal.querySelector("#file-ref-form").addEventListener("submit", (event) => {
+      handleFileRefFormSubmit(event, materialId);
+    });
+  });
+}
+
+function showEditFileRefForm(materialId, fileRefId) {
+  const material = getMaterialById(materialId);
+  const fileRef = getFileRefById(material, fileRefId);
+  if (!material || !fileRef) {
+    return;
+  }
+
+  state.selectedMaterialId = material.materialId;
+  state.materialNotice = "";
+  openModal("파일 참조 수정", renderFileRefForm(materialId, fileRef), (modal) => {
+    modal.querySelector("#file-ref-form").addEventListener("submit", (event) => {
+      handleFileRefFormSubmit(event, materialId, fileRefId);
+    });
+  });
+}
+
+function showCreateImageRefForm(materialId) {
+  const material = getMaterialById(materialId);
+  if (!material) {
+    return;
+  }
+
+  state.selectedMaterialId = material.materialId;
+  state.materialNotice = "";
+  openModal("이미지 참조 추가", renderImageRefForm(materialId), (modal) => {
+    modal.querySelector("#image-ref-form").addEventListener("submit", (event) => {
+      handleImageRefFormSubmit(event, materialId);
+    });
+  });
+}
+
+function showEditImageRefForm(materialId, imageRefId) {
+  const material = getMaterialById(materialId);
+  const imageRef = getImageRefById(material, imageRefId);
+  if (!material || !imageRef) {
+    return;
+  }
+
+  state.selectedMaterialId = material.materialId;
+  state.materialNotice = "";
+  openModal("이미지 참조 수정", renderImageRefForm(materialId, imageRef), (modal) => {
+    modal.querySelector("#image-ref-form").addEventListener("submit", (event) => {
+      handleImageRefFormSubmit(event, materialId, imageRefId);
+    });
+  });
+}
+
 function renderStudentForm(values, isEditing) {
   return `
     <form id="student-form-modal" class="modal-form">
@@ -2533,6 +2930,170 @@ function handleMaterialFormSubmit(event, classId) {
 
   saveMaterials();
   state.editingMaterialId = null;
+  closeModal();
+  render();
+}
+
+function handleFileRefFormSubmit(event, materialId, fileRefId = null) {
+  event.preventDefault();
+
+  const material = getMaterialById(materialId);
+  if (!material) {
+    state.materialNotice = "파일 참조를 연결할 자료를 찾을 수 없습니다.";
+    renderClassDetail();
+    return;
+  }
+
+  const formData = new FormData(event.currentTarget);
+  const now = new Date().toISOString();
+  const fileKind = formData.get("fileKind");
+  const linkMode = formData.get("linkMode");
+  const status = formData.get("status");
+  const values = {
+    fileName: String(formData.get("fileName") || "").trim(),
+    fileKind: FILE_REF_KIND_OPTIONS.includes(fileKind) ? fileKind : "기타",
+    linkMode: FILE_REF_LINK_MODE_LABELS[linkMode] ? linkMode : "manual",
+    status: MATERIAL_STATUS_LABELS[status] ? status : "ready",
+    memo: String(formData.get("memo") || "").trim()
+  };
+
+  if (!values.fileName) {
+    state.materialNotice = "파일명은 필수 입력값입니다.";
+    renderClassDetail();
+    return;
+  }
+
+  const currentRefs = getMaterialFileRefs(material);
+  if (fileRefId && !currentRefs.some((fileRef) => fileRef.fileRefId === fileRefId)) {
+    state.materialNotice = "수정할 파일 참조를 찾을 수 없습니다.";
+    renderClassDetail();
+    return;
+  }
+
+  state.materials = state.materials.map((item) => {
+    if (item.materialId !== materialId) {
+      return item;
+    }
+
+    const fileRefs = getMaterialFileRefs(item);
+    const updatedFileRefs = fileRefId
+      ? fileRefs.map((fileRef) => {
+          if (fileRef.fileRefId !== fileRefId) {
+            return fileRef;
+          }
+
+          return {
+            ...fileRef,
+            ...values,
+            updatedAt: now
+          };
+        })
+      : [
+          {
+            fileRefId: createFileRefId(materialId),
+            ...values,
+            createdAt: now,
+            updatedAt: now
+          },
+          ...fileRefs
+        ];
+
+    return {
+      ...item,
+      fileRefs: updatedFileRefs,
+      imageRefs: getMaterialImageRefs(item),
+      questionRefs: getMaterialQuestionRefs(item),
+      updatedAt: now
+    };
+  });
+
+  state.selectedMaterialId = materialId;
+  state.materialNotice = fileRefId ? "파일 참조를 수정했습니다." : "파일 참조를 추가했습니다.";
+
+  saveMaterials();
+  closeModal();
+  render();
+}
+
+function handleImageRefFormSubmit(event, materialId, imageRefId = null) {
+  event.preventDefault();
+
+  const material = getMaterialById(materialId);
+  if (!material) {
+    state.materialNotice = "이미지 참조를 연결할 자료를 찾을 수 없습니다.";
+    renderClassDetail();
+    return;
+  }
+
+  const formData = new FormData(event.currentTarget);
+  const now = new Date().toISOString();
+  const imageKind = formData.get("imageKind");
+  const status = formData.get("status");
+  const pageNumberRaw = String(formData.get("pageNumber") || "").trim();
+  const sortOrderRaw = String(formData.get("sortOrder") || "").trim();
+  const values = {
+    imageName: String(formData.get("imageName") || "").trim(),
+    imageKind: IMAGE_REF_KIND_OPTIONS.includes(imageKind) ? imageKind : "기타",
+    pageNumber: pageNumberRaw ? Math.max(1, Number.parseInt(pageNumberRaw, 10) || 1) : null,
+    sortOrder: sortOrderRaw ? Math.max(0, Number.parseInt(sortOrderRaw, 10) || 0) : 0,
+    status: MATERIAL_STATUS_LABELS[status] ? status : "ready",
+    memo: String(formData.get("memo") || "").trim()
+  };
+
+  if (!values.imageName) {
+    state.materialNotice = "이미지명은 필수 입력값입니다.";
+    renderClassDetail();
+    return;
+  }
+
+  const currentRefs = getMaterialImageRefs(material);
+  if (imageRefId && !currentRefs.some((imageRef) => imageRef.imageRefId === imageRefId)) {
+    state.materialNotice = "수정할 이미지 참조를 찾을 수 없습니다.";
+    renderClassDetail();
+    return;
+  }
+
+  state.materials = state.materials.map((item) => {
+    if (item.materialId !== materialId) {
+      return item;
+    }
+
+    const imageRefs = getMaterialImageRefs(item);
+    const updatedImageRefs = imageRefId
+      ? imageRefs.map((imageRef) => {
+          if (imageRef.imageRefId !== imageRefId) {
+            return imageRef;
+          }
+
+          return {
+            ...imageRef,
+            ...values,
+            updatedAt: now
+          };
+        })
+      : [
+          ...imageRefs,
+          {
+            imageRefId: createImageRefId(materialId),
+            ...values,
+            createdAt: now,
+            updatedAt: now
+          }
+        ];
+
+    return {
+      ...item,
+      fileRefs: getMaterialFileRefs(item),
+      imageRefs: updatedImageRefs,
+      questionRefs: getMaterialQuestionRefs(item),
+      updatedAt: now
+    };
+  });
+
+  state.selectedMaterialId = materialId;
+  state.materialNotice = imageRefId ? "이미지 참조를 수정했습니다." : "이미지 참조를 추가했습니다.";
+
+  saveMaterials();
   closeModal();
   render();
 }
@@ -2865,6 +3426,86 @@ function hideMaterial(materialId) {
   render();
 }
 
+function hideFileRef(materialId, fileRefId) {
+  const material = getMaterialById(materialId);
+  const fileRef = getFileRefById(material, fileRefId);
+  if (!material || !fileRef || !confirmDelete("이 파일 참조를 숨김 처리합니다. 참조 정보는 자료 안에 보관되며 기본 목록에서는 제외됩니다. 계속하시겠습니까?")) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  state.materials = state.materials.map((item) => {
+    if (item.materialId !== materialId) {
+      return item;
+    }
+
+    return {
+      ...item,
+      fileRefs: getMaterialFileRefs(item).map((itemFileRef) => {
+        if (itemFileRef.fileRefId !== fileRefId) {
+          return itemFileRef;
+        }
+
+        return {
+          ...itemFileRef,
+          status: "hidden",
+          updatedAt: now
+        };
+      }),
+      imageRefs: getMaterialImageRefs(item),
+      questionRefs: getMaterialQuestionRefs(item),
+      updatedAt: now
+    };
+  });
+
+  state.selectedMaterialId = materialId;
+  state.materialNotice = "파일 참조를 숨김 처리했습니다.";
+
+  saveMaterials();
+  closeModal();
+  render();
+}
+
+function hideImageRef(materialId, imageRefId) {
+  const material = getMaterialById(materialId);
+  const imageRef = getImageRefById(material, imageRefId);
+  if (!material || !imageRef || !confirmDelete("이 이미지 참조를 숨김 처리합니다. 참조 정보는 자료 안에 보관되며 기본 목록에서는 제외됩니다. 계속하시겠습니까?")) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  state.materials = state.materials.map((item) => {
+    if (item.materialId !== materialId) {
+      return item;
+    }
+
+    return {
+      ...item,
+      fileRefs: getMaterialFileRefs(item),
+      imageRefs: getMaterialImageRefs(item).map((itemImageRef) => {
+        if (itemImageRef.imageRefId !== imageRefId) {
+          return itemImageRef;
+        }
+
+        return {
+          ...itemImageRef,
+          status: "hidden",
+          updatedAt: now
+        };
+      }),
+      questionRefs: getMaterialQuestionRefs(item),
+      updatedAt: now
+    };
+  });
+
+  state.selectedMaterialId = materialId;
+  state.materialNotice = "이미지 참조를 숨김 처리했습니다.";
+
+  saveMaterials();
+  closeModal();
+  render();
+}
+
 function bindEnrollmentControls() {
   document.querySelectorAll("[data-enroll-student-id]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -3000,6 +3641,42 @@ function bindMaterialControls() {
   document.querySelectorAll("[data-material-edit-id]").forEach((button) => {
     button.addEventListener("click", () => {
       showEditMaterialForm(button.dataset.materialEditId);
+    });
+  });
+
+  document.querySelectorAll("[data-create-file-ref-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      showCreateFileRefForm(button.dataset.createFileRefId);
+    });
+  });
+
+  document.querySelectorAll("[data-file-ref-edit-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      showEditFileRefForm(button.dataset.materialId, button.dataset.fileRefEditId);
+    });
+  });
+
+  document.querySelectorAll("[data-hide-file-ref-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      hideFileRef(button.dataset.materialId, button.dataset.hideFileRefId);
+    });
+  });
+
+  document.querySelectorAll("[data-create-image-ref-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      showCreateImageRefForm(button.dataset.createImageRefId);
+    });
+  });
+
+  document.querySelectorAll("[data-image-ref-edit-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      showEditImageRefForm(button.dataset.materialId, button.dataset.imageRefEditId);
+    });
+  });
+
+  document.querySelectorAll("[data-hide-image-ref-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      hideImageRef(button.dataset.materialId, button.dataset.hideImageRefId);
     });
   });
 
